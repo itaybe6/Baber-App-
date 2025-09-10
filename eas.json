@@ -1,0 +1,36 @@
+{
+    "cli": {
+      "version": ">= 16.13.4",
+      "appVersionSource": "remote"
+    },
+    "build": {
+      "development": {
+        "developmentClient": true,
+        "distribution": "internal",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+          "EAS_BUILD_NODE_PACKAGE_MANAGER": "npm"
+        }
+      },
+      "preview": {
+        "distribution": "internal",
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+          "EAS_BUILD_NODE_PACKAGE_MANAGER": "npm"
+        }
+      },
+      "production": {
+        "autoIncrement": true,
+        "env": {
+          "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+          "EAS_BUILD_NODE_PACKAGE_MANAGER": "npm"
+        },
+        "cache": {
+          "disabled": false
+        }
+      }
+    },
+    "submit": {
+      "production": {}
+    }
+  }

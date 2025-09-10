@@ -7,6 +7,7 @@ import Colors from '@/constants/colors';
 import { useDesignsStore } from '@/stores/designsStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScrollView } from 'react-native';
+import { supabase } from '@/lib/supabase';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -47,7 +48,7 @@ const SkeletonTile = memo(() => {
   );
 });
 
-const DesignTile = memo(({ item, onOpen }: { item: DesignItem; onOpen: (images: string[]) => void }) => {
+const DesignTile = memo(({ item, onOpen, adminUser }: { item: DesignItem; onOpen: (images: string[]) => void; adminUser: AdminUser | null }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const imageOpacity = useRef(new Animated.Value(0)).current;
   const onPressIn = () => {
@@ -97,11 +98,42 @@ const DesignTile = memo(({ item, onOpen }: { item: DesignItem; onOpen: (images: 
               <Text style={styles.multiBadgeText}>{urls.length}</Text>
             </View>
           )}
+          
+          {/* Manager Profile Circle */}
+          {adminUser && (
+            <View style={styles.managerProfileContainer}>
+              <LinearGradient
+                colors={['#7B61FF', '#A78BFA', '#C4B5FD']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.managerProfileRing}
+              >
+                <View style={styles.managerProfileInner}>
+                  <Image
+                    source={
+                      adminUser.image_url 
+                        ? { uri: adminUser.image_url }
+                        : require('@/assets/images/user.png')
+                    }
+                    style={styles.managerProfileImage}
+                    resizeMode="cover"
+                  />
+                </View>
+              </LinearGradient>
+              <View style={styles.staticRing} />
+            </View>
+          )}
         </View>
       </Pressable>
     </Animated.View>
   );
 });
+
+interface AdminUser {
+  id: string;
+  name: string;
+  image_url?: string;
+}
 
 export default function GalleryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -109,6 +141,7 @@ export default function GalleryScreen() {
   const [viewerImages, setViewerImages] = useState<string[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const panY = useRef(new Animated.Value(0)).current;
   const resetPan = () => {
     panY.setValue(0);
@@ -144,6 +177,28 @@ export default function GalleryScreen() {
   // Load data on component mount
   useEffect(() => {
     fetchDesigns();
+  }, []);
+
+  // Load admin user profile
+  useEffect(() => {
+    const loadAdminUser = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, image_url')
+          .eq('user_type', 'admin')
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && data) {
+          setAdminUser(data);
+        }
+      } catch (e) {
+        console.error('Error loading admin user:', e);
+      }
+    };
+
+    loadAdminUser();
   }, []);
   const onRefresh = async () => {
     setRefreshing(true);
@@ -210,6 +265,7 @@ export default function GalleryScreen() {
             renderItem={({ item }) => (
               <DesignTile
                 item={item}
+                adminUser={adminUser}
                 onOpen={(urls) => {
                   setViewerImages(urls);
                   setViewerIndex(0);
@@ -411,7 +467,7 @@ const styles = StyleSheet.create({
   multiBadge: {
     position: 'absolute',
     top: 8,
-    right: 44,
+    left: 8,
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 10,
     paddingHorizontal: 6,
@@ -528,5 +584,46 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: Colors.card,
     margin: 4,
+  },
+  // Manager Profile Styles
+  managerProfileContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 20,
+  },
+  managerProfileRing: {
+    width: 50,
+    height: 50,
+    borderRadius: 20,
+    padding: 2,
+    shadowColor: '#7B61FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  managerProfileInner: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    padding: 1,
+  },
+  managerProfileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 17,
+  },
+  staticRing: {
+    position: 'absolute',
+    top: -1,
+    left: -1,
+    width: 52,
+    height: 52,
+    borderRadius: 21,
+    borderWidth: 1.5,
+    borderColor: '#7B61FF',
+    opacity: 0.7,
   },
 });

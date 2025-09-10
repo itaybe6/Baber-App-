@@ -1,11 +1,12 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet, Animated, Easing, Alert } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Easing, Alert, Text as RNText } from 'react-native';
 import Colors from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/authStore';
+import LoginRequiredModal from '@/components/LoginRequiredModal';
 
 // Custom floating button component
 const FloatingBookButton = ({ onPress, focused }: { onPress: () => void; focused: boolean }) => {
@@ -88,13 +89,17 @@ const FloatingBookButton = ({ onPress, focused }: { onPress: () => void; focused
 export default function ClientTabsLayout() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isBlocked = Boolean((user as any)?.block);
+  
+  const [loginModal, setLoginModal] = React.useState<{ visible: boolean; title?: string; message?: string }>({ visible: false });
   
   // RTL debug removed; rely on explicit layout directions
 
 
 
   return (
+    <>
     <Tabs
       screenOptions={({ route }) => ({
         tabBarHideOnKeyboard: true,
@@ -120,7 +125,16 @@ export default function ClientTabsLayout() {
               return (
                 <FloatingBookButton 
                   onPress={() => {
+                    if (!isAuthenticated) {
+                      setLoginModal({
+                        visible: true,
+                        title: 'נדרש להתחבר',
+                        message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                      });
+                      return;
+                    }
                     if (isBlocked) {
+                      // Keep Alert for blocked users as it's a different use case
                       Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
                       return;
                     }
@@ -141,6 +155,22 @@ export default function ClientTabsLayout() {
                 style={{ fontWeight: focused ? '700' : '400' }}
               />
             </View>
+          );
+        },
+        tabBarButton: (props: any) => {
+          // Intercept presses for specific routes to enforce auth
+          const originalOnPress = props.onPress;
+          return (
+            <TouchableOpacity
+              {...(props as any)}
+              onPress={() => {
+                const name = (props as any).accessibilityState?.label || (props as any).toString?.() || '';
+                // Fallback using route key from props if available
+                const target = (props as any).accessibilityLabel || '';
+                // We cannot reliably detect here; rely on options below per screen where possible
+                originalOnPress?.({} as any);
+              }}
+            />
           );
         },
         tabBarActiveTintColor: '#2C2C2E',
@@ -205,6 +235,14 @@ export default function ClientTabsLayout() {
             <TouchableOpacity
               {...props}
               onPress={() => {
+                if (!isAuthenticated) {
+                  setLoginModal({
+                    visible: true,
+                    title: 'נדרש להתחבר',
+                    message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                  });
+                  return;
+                }
                 if (isBlocked) {
                   Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
                   return;
@@ -215,6 +253,14 @@ export default function ClientTabsLayout() {
             >
               <FloatingBookButton 
                 onPress={() => {
+                  if (!isAuthenticated) {
+                    setLoginModal({
+                      visible: true,
+                      title: 'נדרש להתחבר',
+                      message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                    });
+                    return;
+                  }
                   if (isBlocked) {
                     Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
                     return;
@@ -231,12 +277,62 @@ export default function ClientTabsLayout() {
         name="appointments" 
         options={{
           title: 'התורים שלי',
+          tabBarButton: (props: any) => {
+            const isFocused = props?.accessibilityState?.selected;
+            const color = isFocused ? '#2C2C2E' : '#3A3A3C';
+            return (
+              <TouchableOpacity
+                {...props}
+              onPress={() => {
+                if (!isAuthenticated) {
+                  setLoginModal({
+                    visible: true,
+                    title: 'נדרש להתחבר',
+                    message: 'כדי לצפות בתורים שלך יש להתחבר לחשבון שלך',
+                  });
+                  return;
+                }
+                router.push('/(client-tabs)/appointments');
+              }}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons name={'calendar-outline' as any} size={24} color={color} />
+                </View>
+                <RNText style={[styles.manualTabLabel, { color }]}>{getTabLabel('appointments')}</RNText>
+              </TouchableOpacity>
+            );
+          },
         }}
       />
       <Tabs.Screen 
         name="profile" 
         options={{
           title: 'פרופיל',
+          tabBarButton: (props: any) => {
+            const isFocused = props?.accessibilityState?.selected;
+            const color = isFocused ? '#2C2C2E' : '#3A3A3C';
+            return (
+              <TouchableOpacity
+                {...props}
+              onPress={() => {
+                if (!isAuthenticated) {
+                  setLoginModal({
+                    visible: true,
+                    title: 'נדרש להתחבר',
+                    message: 'כדי לגשת לפרופיל יש להתחבר לחשבון שלך',
+                  });
+                  return;
+                }
+                router.push('/(client-tabs)/profile');
+              }}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons name={'person-outline' as any} size={24} color={color} />
+                </View>
+                <RNText style={[styles.manualTabLabel, { color }]}>{getTabLabel('profile')}</RNText>
+              </TouchableOpacity>
+            );
+          },
         }}
       />
       <Tabs.Screen 
@@ -261,6 +357,19 @@ export default function ClientTabsLayout() {
         }}
       />
     </Tabs>
+    
+    {/* Login required modal */}
+    <LoginRequiredModal
+      visible={loginModal.visible}
+      title={loginModal.title}
+      message={loginModal.message}
+      onClose={() => setLoginModal({ visible: false })}
+      onLogin={() => {
+        setLoginModal({ visible: false });
+        router.push('/login');
+      }}
+    />
+    </>
   );
 }
 
@@ -393,5 +502,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     backdropFilter: 'blur(20px)',
+  },
+  
+  // Manual label style for custom tab buttons (matches tabBarLabelStyle)
+  manualTabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
+    letterSpacing: -0.1,
   },
 });

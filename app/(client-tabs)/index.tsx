@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Linking, Alert, Animated, Easing, InteractionManager, AppState, Dimensions, RefreshControl } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Linking, Alert, Animated, Easing, InteractionManager, AppState, Dimensions, RefreshControl, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
@@ -11,11 +11,13 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MovingBorderCard from '@/components/MovingBorderCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import LoginRequiredModal from '@/components/LoginRequiredModal';
 import { AvailableTimeSlot } from '@/lib/supabase';
 import { notificationsApi } from '@/lib/api/notifications';
-import FloatingNearestSlots from '@/components/FloatingNearestSlots';
 import { businessProfileApi } from '@/lib/api/businessProfile';
 import type { BusinessProfile } from '@/lib/supabase';
+import DesignCarousel from '@/components/DesignCarousel';
+import { useDesignsStore } from '@/stores/designsStore';
 
 
 // API functions for client home
@@ -125,6 +127,7 @@ const clientHomeApi = {
 export default function ClientHomeScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isBlocked = Boolean((user as any)?.block);
   
   const [nextAppointment, setNextAppointment] = useState<AvailableTimeSlot | null>(null);
@@ -139,6 +142,23 @@ export default function ClientHomeScreen() {
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [managerPhone, setManagerPhone] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Designs store
+  const { designs, isLoading: isLoadingDesigns, fetchDesigns } = useDesignsStore();
+
+  const requireAuth = (actionDescription: string, onAuthed: () => void) => {
+    if (!isAuthenticated) {
+      setLoginModal({
+        visible: true,
+        title: 'נדרש להתחבר',
+        message: `כדי ${actionDescription} יש להתחבר לחשבון שלך`,
+      });
+      return;
+    }
+    onAuthed();
+  };
+
+  const [loginModal, setLoginModal] = useState<{ visible: boolean; title?: string; message?: string }>({ visible: false });
 
   const SCREEN_W = Dimensions.get('window').width;
   const EMPTY_CARD_WIDTH = Math.max(280, SCREEN_W - 48); // 24px padding on both sides
@@ -238,65 +258,7 @@ export default function ClientHomeScreen() {
     };
   }, []);
 
-  // Subtle looping drift for bottom-left blue accent circle
-  const accentAnim = React.useRef(new Animated.Value(0)).current;
-  const accentLoopRef = React.useRef<Animated.CompositeAnimation | null>(null);
-  const accentAnimatedStyle = {
-    transform: [
-      {
-        translateX: accentAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, Math.max(0, cardWidth - 80)],
-        }),
-      },
-    ],
-  } as const;
 
-  // Ensure subtle accent animation keeps running and adapts to layout width
-  useFocusEffect(
-    React.useCallback(() => {
-      accentLoopRef.current?.stop();
-      accentAnim.stopAnimation?.(() => {});
-      accentAnim.setValue(0);
-
-      const start = () => {
-        const loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(accentAnim, {
-              toValue: 1,
-              duration: 12000,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(accentAnim, {
-              toValue: 0,
-              duration: 12000,
-              easing: Easing.inOut(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ])
-        );
-        accentLoopRef.current = loop;
-        loop.start();
-      };
-
-      const interactionHandle = InteractionManager.runAfterInteractions(() => start());
-      const appStateSub = AppState.addEventListener('change', (state) => {
-        if (state === 'active') {
-          accentLoopRef.current?.stop();
-          accentAnim.stopAnimation?.(() => {});
-          accentAnim.setValue(0);
-          start();
-        }
-      });
-
-      return () => {
-        interactionHandle && typeof interactionHandle.cancel === 'function' && interactionHandle.cancel();
-        appStateSub.remove();
-        accentLoopRef.current?.stop();
-      };
-    }, [cardWidth])
-  );
 
   // (removed) animated border loop
 
@@ -447,13 +409,19 @@ export default function ClientHomeScreen() {
     load();
   }, []);
 
+  // Fetch designs on mount
+  useEffect(() => {
+    fetchDesigns();
+  }, [fetchDesigns]);
+
   // Load business profile (address and social links)
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const p = await businessProfileApi.getProfile();
         setBusinessProfile(p);
-      } catch {
+      } catch (error) {
+        console.error('Error loading business profile:', error);
         setBusinessProfile(null);
       }
     };
@@ -502,10 +470,11 @@ export default function ClientHomeScreen() {
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      await Promise.all([
+        await Promise.all([
         fetchUserAppointments(),
         fetchWaitlistEntries(),
         fetchUnreadNotificationsCount(),
+        fetchDesigns(),
         (async () => {
           try {
             const list = await servicesApi.getAllServices();
@@ -522,7 +491,7 @@ export default function ClientHomeScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [fetchUserAppointments, fetchWaitlistEntries, fetchUnreadNotificationsCount]);
+  }, [fetchUserAppointments, fetchWaitlistEntries, fetchUnreadNotificationsCount, fetchDesigns]);
 
   // Show all services in a horizontal scroll
   
@@ -570,7 +539,7 @@ export default function ClientHomeScreen() {
           <View style={styles.headerSide}>
             <TouchableOpacity
               style={styles.notificationButton}
-              onPress={() => router.push('/(client-tabs)/profile')}
+              onPress={() => requireAuth('לגשׁת לפרופיל והגדרות', () => router.push('/(client-tabs)/profile'))}
               activeOpacity={0.85}
               accessibilityLabel="הגדרות ופרופיל"
             >
@@ -584,8 +553,10 @@ export default function ClientHomeScreen() {
             <TouchableOpacity 
               style={styles.notificationButton}
               onPress={async () => {
-                await router.push('/(client-tabs)/notifications');
-                setUnreadNotificationsCount(0);
+                return requireAuth('לצפות בהתראות', async () => {
+                  await router.push('/(client-tabs)/notifications');
+                  setUnreadNotificationsCount(0);
+                });
               }}
               activeOpacity={0.85}
               accessibilityLabel="התראות"
@@ -609,11 +580,44 @@ export default function ClientHomeScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
             showsVerticalScrollIndicator={false}
           >
-            {/* Greeting in grey background */}
-            <View style={styles.greetingContainer}>
-              <Text style={styles.welcomeText}>שלום,</Text>
-              <Text style={styles.userName}>{user?.name || 'לקוח יקר'}</Text>
-              <Text style={styles.subtitle}>במה נוכל לעזור לך היום?</Text>
+            {/* Hero Image Section */}
+            <View style={styles.heroSection}>
+              <View style={styles.heroImageContainer}>
+                <Image 
+                  source={require('@/assets/images/1homePage.jpg')} 
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.heroOverlay}
+                />
+                {/* Business Name Badge - Top Right */}
+                {businessProfile?.display_name && (
+                  <View style={styles.businessNameBadge}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.25)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.businessNameGradient}
+                    >
+                      <Text style={styles.businessNameText}>{businessProfile.display_name}</Text>
+                    </LinearGradient>
+                  </View>
+                )}
+
+                <View style={styles.heroContent}>
+                  <View style={styles.heroTextContainer}>
+                    <Text style={styles.heroWelcome}>ברוכים הבאים</Text>
+                    <Text style={styles.heroTitle}>{user?.name || 'לקוח יקר'}</Text>
+                    {businessProfile?.display_name && (
+                      <Text style={styles.heroSubtitle}>{businessProfile.display_name}</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
             </View>
 
         {/* Waitlist Section - Top Priority */}
@@ -693,18 +697,32 @@ export default function ClientHomeScreen() {
           </View>
         )}
 
-        {/* Next Appointment */}
-        {isLoading ? (
-          <View style={[styles.sectionContainer, styles.sectionTopSpacer]}>
+        {/* Appointments Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderModern}>
+            <View style={styles.headerDecorationLeft}>
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+            </View>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.modernTitle}>תורים</Text>
+            </View>
+            <View style={styles.headerDecorationRight}>
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+            </View>
+          </View>
+
+          {/* Next Appointment */}
+          {isLoading ? (
             <View style={styles.loadingCard}>
               <Text style={styles.loadingText}>טוען תורים...</Text>
             </View>
-          </View>
-        ) : nextAppointment ? (
-          <View style={[styles.sectionContainer, styles.sectionTopSpacer]}>
+          ) : nextAppointment ? (
             <View style={styles.appointmentCardWrapper}>
               <View style={styles.appointmentCard} onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}>
-              <Animated.View style={[styles.appointmentAccentSecondary, accentAnimatedStyle]} />
               <View style={styles.appointmentHeader}>
                 <View style={styles.appointmentStatus}>
                   <Animated.View style={[styles.statusDot, statusDotAnimatedStyle]} />
@@ -734,7 +752,7 @@ export default function ClientHomeScreen() {
                   <TouchableOpacity
                     style={styles.appointmentActionButton}
                     activeOpacity={0.9}
-                    onPress={() => router.push('/(client-tabs)/appointments')}
+                    onPress={() => requireAuth('לצפות בתורים שלך', () => router.push('/(client-tabs)/appointments'))}
                   >
                     <LinearGradient
                       colors={[ '#7B61FF', '#7B61FF' ]}
@@ -750,9 +768,7 @@ export default function ClientHomeScreen() {
               {/* removed animated border overlay */}
               </View>
             </View>
-          </View>
-        ) : (
-          <View style={[styles.sectionContainer, styles.sectionTopSpacer]}>
+          ) : (
             <MovingBorderCard
               width={EMPTY_CARD_WIDTH}
               height={EMPTY_CARD_HEIGHT}
@@ -798,6 +814,14 @@ export default function ClientHomeScreen() {
               <TouchableOpacity
                 style={[styles.modernActionButton, isBlocked && { opacity: 0.5 }]}
                 onPress={() => {
+                  if (!isAuthenticated) {
+                    setLoginModal({
+                      visible: true,
+                      title: 'נדרש להתחבר',
+                      message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                    });
+                    return;
+                  }
                   if (isBlocked) {
                     Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
                     return;
@@ -822,16 +846,106 @@ export default function ClientHomeScreen() {
                 </View>
               </TouchableOpacity>
             </MovingBorderCard>
-          </View>
+          )}
+        </View>
+
+        {/* Design Carousel */}
+        {designs && designs.length > 0 && (
+          <DesignCarousel
+            designs={designs}
+            onDesignPress={(design) => {
+              // Handle design press - could navigate to gallery or booking
+              if (!isAuthenticated) {
+                setLoginModal({
+                  visible: true,
+                  title: 'נדרש להתחבר',
+                  message: 'כדי לצפות בעיצובים מלאים יש להתחבר לחשבון שלך',
+                });
+                return;
+              }
+              router.push('/(client-tabs)/gallery');
+            }}
+          />
         )}
 
-        {/* Nearest Available Slots - removed per request (only FAB remains) */}
+ 
+         {/* Courses Section */}
+         <View style={[styles.sectionContainer, { marginTop: 16 }]}>
+          <View style={[styles.sectionHeaderModern, { marginBottom: 28 }]}>
+            <View style={styles.headerDecorationLeft}>
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+            </View>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.modernTitle}>קורסים והשתלמויות</Text>
+            </View>
+            <View style={styles.headerDecorationRight}>
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+            </View>
+          </View>
 
-        {/* Popular Services */}
+           {/* Courses & Workshops Promo */}
+           <View style={styles.appointmentCardWrapper}>
+            <View style={styles.coursesCard} onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}>
+            <View style={styles.coursesBadge}>
+              <Text style={styles.coursesBadgeText}>קורסים והשתלמויות</Text>
+            </View>
+            <Text style={styles.coursesTitle}>מתחילות? מקצועיות?</Text>
+            <Text style={styles.coursesSubtitle}>
+              קורסים למתחילות והשתלמויות למתחילות ולמקצועיות, עם ליווי צמוד והכוונה מעשית כדי לקפוץ רמה.
+            </Text>
+            <TouchableOpacity
+              style={styles.coursesWhatsappButton}
+              onPress={async () => {
+                const message = 'היי 😊\nאני מתעניינת בקורס/השתלמות אשמח לפרטים נוספים';
+                const phone = '972503906556';
+                const appUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+                const webUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                try {
+                  const canOpen = await Linking.canOpenURL(appUrl);
+                  if (canOpen) {
+                    await Linking.openURL(appUrl);
+                  } else {
+                    await Linking.openURL(webUrl);
+                  }
+                } catch (e) {
+                  Alert.alert('שגיאה', 'לא ניתן לפתוח את וואטסאפ במכשיר זה');
+                }
+              }}
+              activeOpacity={0.9}
+              accessibilityLabel="יצירת קשר בוואטסאפ לגבי קורסים והשתלמויות"
+            >
+              <View style={styles.coursesWhatsappContent}>
+                <View style={styles.coursesWhatsappIconWrap}>
+                  <Ionicons name="logo-whatsapp" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={styles.coursesWhatsappText}>דברו איתנו בוואטסאפ</Text>
+                <Ionicons name="chevron-back-outline" size={18} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+        </View>
+
+        {/* Services Section */}
         <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>השירותים שלנו</Text>
-            <Text style={styles.sectionSubtitle}>בחרו שירות והזמינו תור בקליק</Text>
+          <View style={styles.sectionHeaderModern}>
+            <View style={styles.headerDecorationLeft}>
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+            </View>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.modernTitle}>שירותים</Text>
+            </View>
+            <View style={styles.headerDecorationRight}>
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+            </View>
           </View>
           {isLoadingServices ? (
             <View style={styles.loadingCard}>
@@ -844,6 +958,14 @@ export default function ClientHomeScreen() {
                   key={service.id}
                   style={[styles.serviceCard, styles.unflip, isBlocked && { opacity: 0.5 }]}
                   onPress={() => {
+                    if (!isAuthenticated) {
+                      setLoginModal({
+                        visible: true,
+                        title: 'נדרש להתחבר',
+                        message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                      });
+                      return;
+                    }
                     if (isBlocked) {
                       Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
                       return;
@@ -888,56 +1010,25 @@ export default function ClientHomeScreen() {
           )}
         </View>
 
-        {/* Courses & Workshops Promo */}
+        {/* Social Section */}
         <View style={styles.sectionContainer}>
-          <View style={styles.appointmentCardWrapper}>
-            <View style={styles.coursesCard} onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}>
-            <View style={styles.coursesBadge}>
-              <Text style={styles.coursesBadgeText}>קורסים והשתלמויות</Text>
+          <View style={styles.sectionHeaderModern}>
+            <View style={styles.headerDecorationLeft}>
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
             </View>
-            <Text style={styles.coursesTitle}>מתחילות? מקצועיות?</Text>
-            <Text style={styles.coursesSubtitle}>
-              קורסים למתחילות והשתלמויות למתחילות ולמקצועיות, עם ליווי צמוד והכוונה מעשית כדי לקפוץ רמה.
-            </Text>
-            <TouchableOpacity
-              style={styles.coursesWhatsappButton}
-              onPress={async () => {
-                const message = 'היי 😊\nאני מתעניינת בקורס/השתלמות אשמח לפרטים נוספים';
-                const phone = '972503906556';
-                const appUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
-                const webUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-                try {
-                  const canOpen = await Linking.canOpenURL(appUrl);
-                  if (canOpen) {
-                    await Linking.openURL(appUrl);
-                  } else {
-                    await Linking.openURL(webUrl);
-                  }
-                } catch (e) {
-                  Alert.alert('שגיאה', 'לא ניתן לפתוח את וואטסאפ במכשיר זה');
-                }
-              }}
-              activeOpacity={0.9}
-              accessibilityLabel="יצירת קשר בוואטסאפ לגבי קורסים והשתלמויות"
-            >
-              <View style={styles.coursesWhatsappContent}>
-                <View style={styles.coursesWhatsappIconWrap}>
-                  <Ionicons name="logo-whatsapp" size={22} color="#FFFFFF" />
-                </View>
-                <Text style={styles.coursesWhatsappText}>דברו איתנו בוואטסאפ</Text>
-                <Ionicons name="chevron-back-outline" size={18} color="#FFFFFF" />
-              </View>
-            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.modernTitle}>עקבו אחרינו</Text>
+            </View>
+            <View style={styles.headerDecorationRight}>
+              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
+              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
+            </View>
           </View>
-        </View>
-        </View>
 
-        {/* Location + Social icons in one row */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleCompact]}>עקבו אחרינו</Text>
-            <Text style={styles.sectionSubtitle}>תישארו מעודכנים בהטבות, עדכונים ותמונות חדשות</Text>
-          </View>
+          {/* Location + Social icons in one row */}
           <View style={styles.socialContainer}>
             {socialLinks.map((social) => (
               <TouchableOpacity
@@ -1014,8 +1105,19 @@ export default function ClientHomeScreen() {
         </View>
           </ScrollView>
         </View>
-        {/* Floating lightning FAB for nearest slots - temporarily hidden */}
-        {false && <></>}
+
+        {/* Login required modal */}
+        <LoginRequiredModal
+          visible={loginModal.visible}
+          title={loginModal.title}
+          message={loginModal.message}
+          onClose={() => setLoginModal({ visible: false })}
+          onLogin={() => {
+            setLoginModal({ visible: false });
+            router.push('/login');
+          }}
+        />
+
       </SafeAreaView>
     </View>
   );
@@ -1110,7 +1212,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     marginTop: 0,
-    paddingTop: 8,
+    paddingTop: 16,
     overflow: 'hidden',
   },
   logo: {
@@ -1203,6 +1305,74 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 12,
   },
+  // Hero Section Styles
+  heroSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  heroImageContainer: {
+    position: 'relative',
+    height: 280,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  heroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 24,
+  },
+  heroContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 28,
+    alignItems: 'flex-end',
+  },
+  heroTextContainer: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  heroWelcome: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    textAlign: 'right',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  heroTitle: {
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: '900',
+    textAlign: 'right',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  heroSubtitle: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '500',
+    textAlign: 'right',
+    lineHeight: 22,
+    letterSpacing: -0.1,
+  },
   greetingContainer: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -1243,18 +1413,6 @@ const styles = StyleSheet.create({
   },
   appointmentAccent: {
     display: 'none',
-  },
-  appointmentAccentSecondary: {
-    position: 'absolute',
-    bottom: -40,
-    left: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#A78BFA',
-    opacity: 0.08,
-    // ensure the accent circle stays behind content
-    zIndex: -1,
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -1944,6 +2102,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
+  },
+  // Business Name Badge Styles
+  businessNameBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+    zIndex: 10,
+  },
+  businessNameGradient: {
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  businessNameText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+    textAlign: 'center',
+  },
+  // Modern Section Headers
+  sectionHeaderModern: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 16,
+  },
+  headerDecorationLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingRight: 16,
+  },
+  headerDecorationRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingLeft: 16,
+  },
+  decorationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#7B61FF',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modernTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1C1C1E',
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
 });
 

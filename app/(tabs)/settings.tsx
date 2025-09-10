@@ -130,6 +130,7 @@ export default function SettingsScreen() {
   const [adminPhoneDraft, setAdminPhoneDraft] = useState('');
   const [adminEmailDraft, setAdminEmailDraft] = useState('');
   const [isSavingAdmin, setIsSavingAdmin] = useState(false);
+  const [isUploadingAdminAvatar, setIsUploadingAdminAvatar] = useState(false);
 
   // Animated bottom-sheet controls
   const sheetAnim = useRef(new Animated.Value(0)).current; // 0 closed, 1 open
@@ -466,6 +467,76 @@ export default function SettingsScreen() {
       if (enc4 !== 64) bytes[p++] = chr3;
     }
     return bytes;
+  };
+
+  const uploadAdminAvatar = async (asset: { uri: string; base64?: string | null; mimeType?: string | null; fileName?: string | null }): Promise<string | null> => {
+    try {
+      let contentType = asset.mimeType || guessMimeFromUri(asset.fileName || asset.uri);
+      let fileBody: Blob | Uint8Array;
+      if (asset.base64) {
+        const bytes = base64ToUint8Array(asset.base64);
+        fileBody = bytes;
+      } else {
+        const response = await fetch(asset.uri, { cache: 'no-store' });
+        const fetched = await response.blob();
+        fileBody = fetched;
+        contentType = fetched.type || contentType;
+      }
+      const extGuess = (contentType.split('/')![1] || 'jpg').toLowerCase();
+      const randomId = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const filePath = `avatars/${user?.id || 'anon'}/${Date.now()}_${randomId()}.${extGuess}`;
+      const { error } = await supabase.storage.from('avatars').upload(filePath, fileBody as any, { contentType, upsert: false });
+      if (error) {
+        console.error('avatar upload error', error);
+        return null;
+      }
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      return data.publicUrl;
+    } catch (e) {
+      console.error('avatar upload exception', e);
+      return null;
+    }
+  };
+
+  const handlePickAdminAvatar = async () => {
+    try {
+      if (!user?.id) return;
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('הרשאה נחוצה', 'יש לאשר גישה לגלריה כדי לבחור תמונה');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: false,
+        quality: 0.9,
+        base64: true,
+      });
+      if (result.canceled || !result.assets?.length) return;
+      const a: any = result.assets[0];
+      setIsUploadingAdminAvatar(true);
+      const uploadedUrl = await uploadAdminAvatar({
+        uri: a.uri,
+        base64: a.base64 ?? null,
+        mimeType: a.mimeType ?? null,
+        fileName: a.fileName ?? null,
+      });
+      if (!uploadedUrl) {
+        Alert.alert('שגיאה', 'העלאת התמונה נכשלה');
+        return;
+      }
+      const updated = await usersApi.updateUser(user.id as any, { image_url: uploadedUrl } as any);
+      if (!updated) {
+        Alert.alert('שגיאה', 'שמירת תמונת הפרופיל נכשלה');
+        return;
+      }
+      updateUserProfile({ image_url: uploadedUrl } as any);
+    } catch (e) {
+      console.error('pick/upload admin avatar failed', e);
+      Alert.alert('שגיאה', 'העלאת התמונה נכשלה');
+    } finally {
+      setIsUploadingAdminAvatar(false);
+    }
   };
 
   const uploadServiceImage = async (asset: { uri: string; base64?: string | null; mimeType?: string | null; fileName?: string | null }): Promise<string | null> => {
@@ -993,7 +1064,7 @@ export default function SettingsScreen() {
               style={styles.adminAvatarRing}
             >
               <View style={styles.adminAvatar}>
-                <Image source={require('@/assets/images/logo-02.png')} style={styles.adminAvatarImage} resizeMode="contain" />
+                <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-02.png')} style={styles.adminAvatarImage} resizeMode="cover" />
               </View>
             </LinearGradient>
             <TouchableOpacity
@@ -1311,9 +1382,14 @@ export default function SettingsScreen() {
                   end={{ x: 1, y: 1 }}
                   style={styles.modalAvatarRing}
                 >
-                  <View style={styles.modalAvatar}>
-                    <Image source={require('@/assets/images/logo-02.png')} style={styles.modalAvatarImage} resizeMode="contain" />
-                  </View>
+                  <TouchableOpacity style={styles.modalAvatar} onPress={handlePickAdminAvatar} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel="שנה תמונת מנהלת">
+                    <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-02.png')} style={styles.modalAvatarImage} resizeMode="cover" />
+                    {isUploadingAdminAvatar && (
+                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 36 }}>
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
                 </LinearGradient>
               </View>
               <Text style={styles.modalAdminName}>{adminNameDraft || user?.name || 'מנהל'}</Text>
@@ -1321,6 +1397,11 @@ export default function SettingsScreen() {
               {(adminEmailDraft || (user as any)?.email) ? (
                 <Text style={styles.modalAdminMeta}>{adminEmailDraft || (user as any)?.email}</Text>
               ) : null}
+              <View style={{ marginTop: 8 }}>
+                <TouchableOpacity onPress={handlePickAdminAvatar} style={[styles.pickButton, { alignSelf: 'center', backgroundColor: '#F2F2F7', borderColor: '#E5E5EA' }]} activeOpacity={0.85} disabled={isUploadingAdminAvatar}>
+                  <Text style={styles.pickButtonText}>{isUploadingAdminAvatar ? 'מעלה...' : 'החלף תמונה'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.iosCard}>

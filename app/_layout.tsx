@@ -49,17 +49,18 @@ export default function RootLayout() {
     }
   }, [loaded, storeHydrated, isAuthenticated, user, segments, desiredGroup, normalizedRole, router]);
 
-  // If unauthenticated, force navigation to login to avoid stale route showing
+  // If unauthenticated, ensure we are on the public client group by default
   React.useEffect(() => {
     if (!loaded || !storeHydrated) return;
-    if (!isAuthenticated || !user) {
-      // Only redirect if not already on auth screens
+    if (!isAuthenticated) {
       const currentTop = segments[0];
-      if (currentTop !== 'login' && currentTop !== 'register') {
-        router.replace('/login');
+      // Allow staying on login/register or public client group
+      const isAllowed = currentTop === '(client-tabs)' || currentTop === 'login' || currentTop === 'register' || typeof currentTop === 'undefined';
+      if (!isAllowed) {
+        router.replace('/(client-tabs)');
       }
     }
-  }, [loaded, storeHydrated, isAuthenticated, user, segments, router]);
+  }, [loaded, storeHydrated, isAuthenticated, segments, router]);
 
   // Wait for zustand-persist hydration
   React.useEffect(() => {
@@ -139,10 +140,11 @@ export default function RootLayout() {
 
   let content: React.ReactNode = null;
 
-  // אם המשתמש לא מחובר, הצג Stack Navigator לאותנטיקציה
+  // אם המשתמש לא מחובר, הצג את דף הבית הציבורי + מסכי התחברות/הרשמה
   if (!isAuthenticated) {
     content = (
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(client-tabs)" />
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />
       </Stack>

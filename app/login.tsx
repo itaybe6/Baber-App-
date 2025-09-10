@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '@/stores/authStore';
@@ -190,19 +190,19 @@ export default function LoginScreen() {
       end={{ x: 0.8, y: 1 }}
       style={styles.bgGradient}
     >
-      {/* subtle color blobs to enrich the background without overpowering */}
+      {/* modern subtle gradient beams instead of circular blobs */}
       <LinearGradient
-        colors={['#7B61FF1A', '#A78BFA1A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.blobTopLeft}
+        colors={[ '#7B61FF22', '#7B61FF00' ]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.beamRight}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['#7B61FF1A', '#A78BFA1A']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.blobBottomRight}
+        colors={[ '#A78BFA26', '#FFFFFF00' ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.beamTop}
         pointerEvents="none"
       />
       <SafeAreaView style={styles.fullSafe}>
@@ -255,9 +255,9 @@ export default function LoginScreen() {
               {/* CTA */}
               <TouchableOpacity onPress={handleLogin} activeOpacity={0.9} disabled={isLoading} style={styles.ctaShadow}>
                 <View style={styles.ctaRadiusWrap}>
-                  <LinearGradient colors={[ '#7B61FF', '#7B61FF' ]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+                  <View style={[styles.cta, styles.ctaOutlined]}>
                     <Text style={styles.ctaText}>{isLoading ? 'מתחבר…' : 'התחברות'}</Text>
-                  </LinearGradient>
+                  </View>
                 </View>
               </TouchableOpacity>
 
@@ -267,7 +267,9 @@ export default function LoginScreen() {
               </TouchableOpacity>
               <Text style={styles.registerLine}>
                 אין לך חשבון? 
-                <Text onPress={() => router.push('/register')} style={styles.registerAction}>הירשמי עכשיו</Text>
+                <Link href="/register" asChild>
+                  <Text style={styles.registerAction}>הירשמי עכשיו</Text>
+                </Link>
               </Text>
             </View>
           </ScrollView>
@@ -339,23 +341,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  blobTopLeft: {
+  beamRight: {
     position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    top: -120,
-    left: -120,
+    right: -120,
+    top: -40,
+    width: 300,
+    height: 500,
+    transform: [{ rotate: '18deg' }],
     opacity: 1,
+    borderRadius: 24,
   },
-  blobBottomRight: {
+  beamTop: {
     position: 'absolute',
-    width: 360,
-    height: 360,
-    borderRadius: 180,
-    right: -140,
-    bottom: -140,
+    left: -80,
+    top: -60,
+    width: 380,
+    height: 240,
+    transform: [{ rotate: '-10deg' }],
     opacity: 1,
+    borderRadius: 24,
   },
   logoBadge: {
     width: 72,
@@ -464,8 +468,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  ctaOutlined: {
+    backgroundColor: 'rgba(255,255,255,0.78)',
+    borderWidth: 1,
+    borderColor: 'rgba(123,97,255,0.75)',
+    borderRadius: 24,
+    shadowColor: 'rgba(123,97,255,0.4)',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
   ctaText: {
-    color: palette.white,
+    color: '#6E5BFF',
     fontSize: 16,
     fontWeight: '600',
   },

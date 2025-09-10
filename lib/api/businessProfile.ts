@@ -31,6 +31,7 @@ export const businessProfileApi = {
           .from('business_profile')
           .update({
             display_name: updates.display_name,
+            description: (updates as any).description,
             address: updates.address,
             instagram_url: updates.instagram_url,
             facebook_url: updates.facebook_url,
@@ -52,6 +53,7 @@ export const businessProfileApi = {
         .from('business_profile')
         .insert({
           display_name: updates.display_name,
+          description: (updates as any).description,
           address: updates.address,
           instagram_url: updates.instagram_url,
           facebook_url: updates.facebook_url,

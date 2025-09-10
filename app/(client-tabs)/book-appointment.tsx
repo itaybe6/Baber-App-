@@ -1109,6 +1109,7 @@ export default function BookAppointment() {
                       styles.dayPill,
                       !hasAvail && styles.dayPillUnavailable,
                       isSelected && hasAvail && styles.dayPillSelected,
+                      isSelected && !hasAvail && styles.dayPillUnavailableSelected,
                     ]}
                     onPress={() => {
                       const isSame = selectedDay === idx;
@@ -1120,18 +1121,21 @@ export default function BookAppointment() {
                     <Text style={[
                       styles.dayPillDate,
                       !hasAvail && styles.dayPillDateEm,
-                      isSelected && hasAvail && styles.dayPillDateSelected,
+                      isSelected && styles.dayPillDateSelected,
                     ]}>{dsPretty}</Text>
                     <Text style={[
                       styles.dayPillLabel,
                       !hasAvail && styles.dayPillLabelEm,
-                      isSelected && hasAvail && styles.dayPillLabelSelected,
+                      isSelected && styles.dayPillLabelSelected,
                     ]}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
             <Text style={styles.daysLegend}>* ימים ללא תורים פנויים מסומנים באדום</Text>
+            <Text style={styles.daysLegendSecondary}>
+              * גם אם אין תורים פנויים – אפשר ללחוץ על היום ולהצטרף לרשימת ההמתנה לאותו היום
+            </Text>
           </View>
         )}
 
@@ -1498,7 +1502,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   serviceCardSelected: {
-    borderColor: '#000000',
+    borderColor: Colors.primary,
     shadowOpacity: 0.15,
     transform: [{ scale: 1.02 }],
   },
@@ -1569,11 +1573,11 @@ const styles = StyleSheet.create({
     left: 10,
     width: 28,
     height: 28,
-    backgroundColor: '#000000',
+    backgroundColor: Colors.primary,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1620,8 +1624,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(142, 142, 147, 0.2)',
   },
   dayBtnSelected: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
     shadowOpacity: 0.15,
     transform: [{ scale: 1.05 }],
   },
@@ -1664,9 +1668,14 @@ const styles = StyleSheet.create({
   dayPillUnavailable: {
     borderColor: 'rgba(255,59,48,0.35)',
   },
+  dayPillUnavailableSelected: {
+    backgroundColor: '#FF3B30',
+    borderColor: '#FF3B30',
+    shadowOpacity: 0.18,
+  },
   dayPillSelected: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
     shadowOpacity: 0.18,
   },
   dayPillDate: {
@@ -1712,8 +1721,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.06)'
   },
   timePillSelected: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   timePillLabel: {
     fontSize: 16,
@@ -1728,6 +1737,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: '#1C1C1E',
     fontSize: 12,
+  },
+  daysLegendSecondary: {
+    marginTop: 6,
+    textAlign: 'right',
+    color: '#6B7280',
+    fontSize: 12,
+    lineHeight: 16,
   },
   dayDate: {
     fontSize: 20,
@@ -1844,13 +1860,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   bookBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: Colors.primary,
     borderRadius: 20,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     width: '88%',
-    shadowColor: '#000000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,

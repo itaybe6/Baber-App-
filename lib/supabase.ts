@@ -201,6 +201,7 @@ export interface Notification {
 export interface BusinessProfile {
   id: string;
   display_name?: string;
+  description?: string;
   address?: string;
   instagram_url?: string;
   facebook_url?: string;

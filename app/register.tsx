@@ -40,8 +40,8 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const bottomWhiteHeight = Math.max(insets.bottom, 20);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(100)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -62,28 +62,8 @@ export default function RegisterScreen() {
   }, []);
 
   useEffect(() => {
-    // defer animation until interactions/layout settle
-    const run = () => {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 900,
-          delay: 80,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 900,
-          delay: 80,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start();
-    };
-    const handle = InteractionManager.runAfterInteractions(run);
-    return () => handle.cancel();
-  }, [fadeAnim, translateY]);
+    // No-op: content is visible by default
+  }, []);
 
   const validatePassword = (password: string) => {
     return password.length >= 6;

@@ -29,7 +29,7 @@ export default function Index() {
     if (!hydrated) return;
 
     if (!isAuthenticated || !user) {
-      router.replace('/login');
+      router.replace('/(client-tabs)');
       return;
     }
 

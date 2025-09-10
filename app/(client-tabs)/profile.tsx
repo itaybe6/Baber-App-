@@ -33,6 +33,7 @@ export default function ClientProfileScreen() {
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [upcomingAppointments, setUpcomingAppointments] = useState<AvailableTimeSlot[]>([]);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const formatTimeHHMM = (t?: string | null): string => {
     if (!t) return '';
     const parts = String(t).split(':');
@@ -146,7 +147,7 @@ export default function ClientProfileScreen() {
           style: 'destructive',
           onPress: () => {
             logout();
-            router.replace('/login');
+            router.replace('/(client-tabs)');
           }
         }
       ]
@@ -198,6 +199,43 @@ export default function ClientProfileScreen() {
             await notificationsApi.clearPushToken(user.phone);
           }
         } catch {}
+      },
+    },
+    {
+      id: 'delete-account',
+      icon: 'trash-outline',
+      title: 'מחיקת חשבון',
+      subtitle: 'מחיקת החשבון לצמיתות',
+      onPress: async () => {
+        if (!user?.id || isDeleting) return;
+        Alert.alert(
+          'מחיקת חשבון',
+          'האם אתה בטוח שברצונך למחוק את החשבון? פעולה זו אינה ניתנת לביטול.',
+          [
+            { text: 'ביטול', style: 'cancel' },
+            {
+              text: 'מחק',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  setIsDeleting(true);
+                  const ok = await usersApi.deleteUser(user.id);
+                  if (ok) {
+                    logout();
+                    router.replace('/login');
+                  } else {
+                    Alert.alert('שגיאה', 'נכשל במחיקת החשבון');
+                  }
+                } catch (e) {
+                  console.error('delete account failed', e);
+                  Alert.alert('שגיאה', 'נכשל במחיקת החשבון');
+                } finally {
+                  setIsDeleting(false);
+                }
+              }
+            }
+          ]
+        );
       },
     },
     {

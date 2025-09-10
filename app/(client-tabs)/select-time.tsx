@@ -610,8 +610,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.06)'
   },
   timePillSelected: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   timePillLabel: {
     fontSize: 16,
@@ -629,13 +629,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   bookBtn: {
-    backgroundColor: '#000000',
+    backgroundColor: Colors.primary,
     borderRadius: 20,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     width: '88%',
-    shadowColor: '#000000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,

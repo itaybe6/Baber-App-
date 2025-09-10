@@ -138,5 +138,24 @@ export const usersApi = {
       console.error('Error updating user:', error);
       return null;
     }
+  },
+  // Delete user by ID
+  async deleteUser(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting user:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
   }
 };

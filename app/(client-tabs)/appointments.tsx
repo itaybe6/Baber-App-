@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { checkWaitlistAndNotify, notifyServiceWaitlistClients } from '@/lib/api/waitlistNotifications';
 import { notificationsApi } from '@/lib/api/notifications';
+import { businessProfileApi } from '@/lib/api/businessProfile';
 
 type TabType = 'upcoming' | 'past';
 
@@ -128,6 +129,7 @@ export default function ClientAppointmentsScreen() {
   const [isCanceling, setIsCanceling] = useState(false);
   const [showLateCancelModal, setShowLateCancelModal] = useState(false);
   const [managerPhone, setManagerPhone] = useState<string | null>(null);
+  const [businessAddress, setBusinessAddress] = useState<string>('');
   const { user } = useAuthStore();
 
   // Load manager phone (first admin user)
@@ -156,7 +158,24 @@ export default function ClientAppointmentsScreen() {
         setManagerPhone(null);
       }
     };
+    
+    const loadBusinessAddress = async () => {
+      try {
+        const profile = await businessProfileApi.getProfile();
+        console.log('Business profile:', profile);
+        if (profile?.address) {
+          console.log('Setting address:', profile.address);
+          setBusinessAddress(String(profile.address));
+        } else {
+          console.log('No address found in profile');
+        }
+      } catch (error) {
+        console.error('Error loading business address:', error);
+      }
+    };
+    
     loadManagerPhone();
+    loadBusinessAddress();
   }, []);
 
   // Helper to check if appointment is within 48 hours from now
@@ -333,58 +352,57 @@ export default function ClientAppointmentsScreen() {
   const NextAppointmentHero: React.FC = React.useCallback(() => {
     if (!(activeTab === 'upcoming' && nextAppointment)) return null;
     return (
-      <View style={styles.nextCardWrapper}>
+      <View style={styles.heroCardContainer}>
         <LinearGradient
-          colors={["#FFFFFF", "#FFFFFF"]}
-          style={styles.nextCard}
+          colors={["#FFFFFF", "#FAFAFA"]}
+          style={styles.heroCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <View style={styles.nextCardHeaderRow}>
-            <View style={styles.nextBadge}>
-              <Ionicons name="sparkles" size={14} color="#7B61FF" />
-              <Text style={styles.nextBadgeText}>התור הקרוב שלך</Text>
+          <View style={styles.heroCardOverlay} />
+          
+          <View style={styles.heroContent}>
+            {/* Sparkles icon in top right corner */}
+            <View style={styles.heroTypeIndicatorAbsolute}>
+              <Ionicons name="sparkles-outline" size={18} color="#8E8E93" />
             </View>
-          </View>
-
-          <Text style={styles.nextServiceName}>{nextAppointment!.service_name || 'שירות'}</Text>
-
-          <View style={styles.nextInfoRows}>
-            {/* Date */}
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>{formatDate(nextAppointment!.slot_date)}</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="calendar" size={14} color="#7B61FF" /></View>
-            </View>
-            {/* Location */}
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>נעמה נייל סטודיו</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="location" size={14} color="#7B61FF" /></View>
-            </View>
-            {/* Time */}
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>{formatTime(nextAppointment!.slot_time)}</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="time-outline" size={14} color="#7B61FF" /></View>
-            </View>
-          </View>
-
-          <View style={styles.nextFooterRow}>
+            
+            {/* Cancel button in top left corner */}
             <TouchableOpacity
-              style={styles.nextCancelButton}
+              style={styles.heroCancelButtonTopLeft}
               onPress={() => handleCancelAppointment(nextAppointment!)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
-              <Ionicons name="close-circle" size={18} color="#FF3B30" />
-              <Text style={styles.nextCancelText}>ביטול</Text>
+              <Ionicons name="close" size={16} color="#FF3B30" />
+              <Text style={styles.heroCancelButtonText}>ביטול</Text>
             </TouchableOpacity>
-            <View style={styles.nextStatusRow}>
-              <View style={styles.nextStatusDot} />
-              <Text style={styles.nextStatusText}>מאושר</Text>
+
+            <Text style={styles.heroServiceNameNext}>{nextAppointment!.service_name || 'שירות'}</Text>
+            {businessAddress ? (
+              <View style={styles.heroLocationRow}>
+                <Text style={styles.heroLocationText}>{businessAddress}</Text>
+                <View style={styles.heroLocationIcon}>
+                  <Ionicons name="location" size={12} color="#7B61FF" />
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.heroDetailsContainer}>
+              <View style={styles.heroDetailCard}>
+                <Ionicons name="calendar" size={16} color="#7B61FF" />
+                <Text style={styles.heroDetailValue}>{formatDate(nextAppointment!.slot_date)}</Text>
+              </View>
+
+              <View style={styles.heroDetailCard}>
+                <Ionicons name="time" size={16} color="#7B61FF" />
+                <Text style={styles.heroDetailValue}>{formatTime(nextAppointment!.slot_time)}</Text>
+              </View>
             </View>
           </View>
         </LinearGradient>
       </View>
     );
-  }, [activeTab, nextAppointment, formatDate, formatTime, handleCancelAppointment]);
+  }, [activeTab, nextAppointment, formatDate, formatTime, handleCancelAppointment, businessAddress]);
 
   // Handle cancel appointment
   function handleCancelAppointment(appointment: AvailableTimeSlot) {
@@ -431,42 +449,45 @@ export default function ClientAppointmentsScreen() {
   const renderAppointment = React.useCallback(({ item }: { item: AvailableTimeSlot }) => {
     if (activeTab === 'past') {
       return (
-        <View style={styles.appointmentCard}>
+        <View style={styles.heroCardContainer}>
           <LinearGradient
-            colors={["#FFFFFF", "#FFFFFF"]}
-            style={styles.nextCard}
+            colors={["#FFFFFF", "#FAFAFA"]}
+            style={styles.heroCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <View style={styles.nextCardHeaderRow}>
-              <View style={styles.nextBadge}>
-                <Ionicons name="time-outline" size={14} color="#7B61FF" />
-                <Text style={styles.nextBadgeText}>תור קודם</Text>
+            <View style={styles.heroCardOverlay} />
+            
+            <View style={styles.heroContent}>
+              <View style={styles.regularHeader}>
+                <View style={styles.pastBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#34C759" />
+                  <Text style={styles.pastBadgeText}>הושלם</Text>
+                </View>
+                <View style={styles.regularTypeIndicator}>
+                  <Ionicons name="sparkles-outline" size={18} color="#8E8E93" />
+                </View>
               </View>
-            </View>
 
-            <Text style={styles.nextServiceName}>{item.service_name || 'שירות'}</Text>
+              <Text style={styles.heroServiceName}>{item.service_name || 'שירות'}</Text>
+              {businessAddress ? (
+                <View style={styles.heroLocationRow}>
+                  <Text style={styles.heroLocationText}>{businessAddress}</Text>
+                  <View style={styles.heroLocationIcon}>
+                    <Ionicons name="location" size={12} color="#7B61FF" />
+                  </View>
+                </View>
+              ) : null}
 
-            <View style={styles.nextInfoRows}>
-              <View style={styles.nextInfoRow}>
-                <Text style={styles.nextInfoText}>{formatDate(item.slot_date)}</Text>
-                <View style={styles.nextIconCircle}><Ionicons name="calendar" size={14} color="#7B61FF" /></View>
-              </View>
-              <View style={styles.nextInfoRow}>
-                <Text style={styles.nextInfoText}>נעמה נייל סטודיו</Text>
-                <View style={styles.nextIconCircle}><Ionicons name="location" size={14} color="#7B61FF" /></View>
-              </View>
-              <View style={styles.nextInfoRow}>
-                <Text style={styles.nextInfoText}>{formatTime(item.slot_time)}</Text>
-                <View style={styles.nextIconCircle}><Ionicons name="time-outline" size={14} color="#7B61FF" /></View>
-              </View>
-            </View>
-
-            <View style={styles.nextFooterRow}>
-              <View />
-              <View style={styles.nextStatusRow}>
-                <View style={styles.nextStatusDot} />
-                <Text style={styles.nextStatusText}>הושלם</Text>
+              <View style={styles.heroDetailsContainer}>
+                <View style={styles.heroDetailCard}>
+                  <Ionicons name="calendar" size={16} color="#7B61FF" />
+                  <Text style={styles.heroDetailValue}>{formatDate(item.slot_date)}</Text>
+                </View>
+                <View style={styles.heroDetailCard}>
+                  <Ionicons name="time" size={16} color="#7B61FF" />
+                  <Text style={styles.heroDetailValue}>{formatTime(item.slot_time)}</Text>
+                </View>
               </View>
             </View>
           </LinearGradient>
@@ -474,53 +495,60 @@ export default function ClientAppointmentsScreen() {
       );
     }
 
-    // Upcoming appointments: use the new hero-style card for ALL items
+    // Upcoming appointments: modern card design
     return (
-      <View style={styles.nextCardWrapper}>
+      <View style={styles.heroCardContainer}>
         <LinearGradient
-          colors={["#FFFFFF", "#FFFFFF"]}
-          style={styles.nextCard}
+          colors={["#FFFFFF", "#FAFAFA"]}
+          style={styles.heroCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          {/* Keep header row for spacing (no "next" badge for non-first items) */}
-          <View style={styles.nextCardHeaderRow} />
-
-          <Text style={styles.nextServiceName}>{item.service_name || 'שירות'}</Text>
-
-          <View style={styles.nextInfoRows}>
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>{formatDate(item.slot_date)}</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="calendar" size={14} color="#7B61FF" /></View>
+          <View style={styles.heroCardOverlay} />
+          
+          <View style={styles.heroContent}>
+            <View style={styles.regularHeader}>
+              {/* Sparkles icon in top right corner */}
+              <View style={styles.heroTypeIndicatorAbsolute}>
+                <Ionicons name="sparkles-outline" size={18} color="#8E8E93" />
+              </View>
+              
+              {/* Cancel button in top left corner */}
+              <TouchableOpacity
+                style={styles.heroCancelButtonTopLeft}
+                onPress={() => handleCancelAppointment(item)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="close" size={16} color="#FF3B30" />
+                <Text style={styles.heroCancelButtonText}>ביטול</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>נעמה נייל סטודיו</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="location" size={14} color="#7B61FF" /></View>
-            </View>
-            <View style={styles.nextInfoRow}>
-              <Text style={styles.nextInfoText}>{formatTime(item.slot_time)}</Text>
-              <View style={styles.nextIconCircle}><Ionicons name="time-outline" size={14} color="#7B61FF" /></View>
-            </View>
-          </View>
 
-          <View style={styles.nextFooterRow}>
-            <TouchableOpacity
-              style={styles.nextCancelButton}
-              onPress={() => handleCancelAppointment(item)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close-circle" size={18} color="#FF3B30" />
-              <Text style={styles.nextCancelText}>ביטול</Text>
-            </TouchableOpacity>
-            <View style={styles.nextStatusRow}>
-              <View style={styles.nextStatusDot} />
-              <Text style={styles.nextStatusText}>מאושר</Text>
+            <Text style={styles.heroServiceNameNext}>{item.service_name || 'שירות'}</Text>
+            {businessAddress ? (
+              <View style={styles.heroLocationRow}>
+                <Text style={styles.heroLocationText}>{businessAddress}</Text>
+                <View style={styles.heroLocationIcon}>
+                  <Ionicons name="location" size={12} color="#7B61FF" />
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.heroDetailsContainer}>
+              <View style={styles.heroDetailCard}>
+                <Ionicons name="calendar" size={16} color="#7B61FF" />
+                <Text style={styles.heroDetailValue}>{formatDate(item.slot_date)}</Text>
+              </View>
+              <View style={styles.heroDetailCard}>
+                <Ionicons name="time" size={16} color="#7B61FF" />
+                <Text style={styles.heroDetailValue}>{formatTime(item.slot_time)}</Text>
+              </View>
             </View>
           </View>
         </LinearGradient>
       </View>
     );
-  }, [formatDate, formatTime, activeTab, handleCancelAppointment]);
+  }, [formatDate, formatTime, activeTab, handleCancelAppointment, businessAddress]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -652,38 +680,54 @@ export default function ClientAppointmentsScreen() {
             }
           />
         ) : (
-          <ScrollView
-            contentContainerStyle={activeTab === 'upcoming' && nextAppointment ? styles.emptyStateWithHero : styles.emptyState}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[Colors.primary]}
-                tintColor={Colors.primary}
-                title="מעדכן התורים..."
-                titleColor={Colors.primary}
+          activeTab === 'upcoming' && nextAppointment ? (
+            <ScrollView
+              contentContainerStyle={styles.emptyStateWithHero}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[Colors.primary]}
+                  tintColor={Colors.primary}
+                  title="מעדכן התורים..."
+                  titleColor={Colors.primary}
+                />
+              }
+            >
+              <NextAppointmentHero />
+            </ScrollView>
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.emptyState}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[Colors.primary]}
+                  tintColor={Colors.primary}
+                  title="מעדכן התורים..."
+                  titleColor={Colors.primary}
+                />
+              }
+            >
+              <Ionicons 
+                name="calendar-outline" 
+                size={64} 
+                color={Colors.subtext} 
+                style={styles.emptyIcon}
               />
-            }
-          >
-            <NextAppointmentHero />
-            <View style={styles.afterHeroSpacer} />
-            <Ionicons 
-              name="calendar-outline" 
-              size={64} 
-              color={Colors.subtext} 
-              style={styles.emptyIcon}
-            />
-            <Text style={styles.emptyTitle}>
-              {activeTab === 'upcoming' 
-                ? (nextAppointment ? 'אין תורים נוספים' : 'אין תורים קרובים')
-                : 'אין תורים קודמים'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {activeTab === 'upcoming' 
-                ? (nextAppointment ? 'אין תורים נוספים להצגה' : 'התורים הקרובים שלך יופיעו כאן')
-                : 'התורים הקודמים שלך יופיעו כאן'}
-            </Text>
-          </ScrollView>
+              <Text style={styles.emptyTitle}>
+                {activeTab === 'upcoming' 
+                  ? 'אין תורים קרובים'
+                  : 'אין תורים קודמים'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {activeTab === 'upcoming' 
+                  ? 'התורים הקרובים שלך יופיעו כאן'
+                  : 'התורים הקודמים שלך יופיעו כאן'}
+              </Text>
+            </ScrollView>
+          )
         )}
       </View>
 
@@ -1074,44 +1118,89 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '400',
   },
-    // Next (upcoming) appointment hero card
-    nextCardWrapper: {
-      width: '100%',
-      paddingHorizontal: 16,
-      paddingTop: 0,
-      paddingBottom: 0,
-      marginTop: 14,
-    },
-    nextCard: {
-      borderRadius: 24,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-      elevation: 8,
-    },
-    nextCardHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      marginBottom: 6,
-    },
-    nextBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: 'rgba(123,97,255,0.10)',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 14,
-    },
-    nextBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: '#7B61FF',
-    },
+  // Hero card styles (next appointment)
+  heroCardContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
+    marginTop: 14,
+  },
+  heroCard: {
+    borderRadius: 20,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroCardOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(123, 97, 255, 0.03)',
+    borderRadius: 50,
+    transform: [{ translateX: 30 }, { translateY: -30 }],
+  },
+  heroContent: {
+    position: 'relative',
+    zIndex: 1,
+  },
+  heroHeaderActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  heroTypeIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -6,
+    marginRight: -6,
+  },
+  heroTypeIndicatorAbsolute: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  heroCancelButtonTopLeft: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  heroCancelButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF3B30',
+  },
     nextCancelButton: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1126,67 +1215,160 @@ const styles = StyleSheet.create({
       fontWeight: '700',
       color: '#FF3B30',
     },
-    nextServiceName: {
-      fontSize: 19,
-      fontWeight: '800',
-      color: '#1C1C1E',
-      textAlign: 'right',
-      letterSpacing: -0.5,
-      marginBottom: 6,
-    },
-    nextInfoRows: {
-      gap: 6,
-      marginBottom: 4,
-    },
-    nextInfoRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 8,
-    },
-    nextIconCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: 'rgba(255,255,255,0.9)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    nextInfoText: {
-      fontSize: 13,
-      color: '#1C1C1E',
-      fontWeight: '600',
-      textAlign: 'right',
-      letterSpacing: -0.2,
-    },
-    nextFooterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      marginTop: 0,
-    },
-    nextStatusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    nextStatusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: '#34C759',
-    },
-    nextStatusText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: '#34C759',
-    },
+  heroServiceName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1C1C1E',
+    textAlign: 'right',
+    letterSpacing: -0.4,
+    marginBottom: 4,
+  },
+  heroServiceNameNext: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1C1C1E',
+    textAlign: 'right',
+    letterSpacing: -0.4,
+    marginBottom: 4,
+    marginTop: 50,
+  },
+  heroLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 16,
+    gap: 6,
+  },
+  heroLocationIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(123, 97, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroLocationText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#8E8E93',
+    textAlign: 'right',
+  },
+  heroDetailsContainer: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'flex-end',
+    gap: 16,
+  },
+  heroDetailCard: {
+    flexShrink: 0,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(123, 97, 255, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  heroDetailValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    textAlign: 'right',
+  },
+  heroCancelButtonTopLeft: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  heroCancelButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF3B30',
+  },
+
+  // Regular appointment card styles
+  regularHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  upcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(123, 97, 255, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  upcomingBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7B61FF',
+  },
+  pastBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(52, 199, 89, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  pastBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#34C759',
+  },
+  regularTypeIndicator: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  regularCancelButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  regularFooter: {
+    marginTop: 16,
+    alignItems: 'flex-end',
+  },
+  regularStatusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  regularStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#34C759',
+  },
+  regularStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#34C759',
+  },
   loadMoreButton: {
     marginTop: 20,
     backgroundColor: '#7B61FF',
@@ -1205,7 +1387,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   cancelButton: {
     flexDirection: 'row',

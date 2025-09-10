@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#1C1C1E',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#A78BFA',
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
   imageContainer: {
     flex: 1,
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     bottom: -2,
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: '#7B61FF',
+    borderColor: '#1C1C1E',
   },
   sparkle: {
     position: 'absolute',
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     padding: 3,
-    shadowColor: '#7B61FF',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
     height: 68,
     borderRadius: 34,
     borderWidth: 2,
-    borderColor: '#7B61FF',
+    borderColor: '#1C1C1E',
     opacity: 0.8,
   },
   contentGradient: {

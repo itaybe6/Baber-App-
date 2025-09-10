@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window');
 const numColumns = 2;
 const horizontalPadding = 16;
 const tileSize = (width - horizontalPadding * 2) / numColumns;
-const ACCENT_PURPLE = '#7B61FF';
+const ACCENT_PURPLE = '#000000';
 
 export default function EditGalleryScreen() {
   const router = useRouter();
@@ -49,7 +49,7 @@ export default function EditGalleryScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsMultipleSelection: true,
       quality: 0.9,
       selectionLimit: 10,
@@ -153,7 +153,7 @@ export default function EditGalleryScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsMultipleSelection: true,
       selectionLimit: 10,
       quality: 0.9,
@@ -566,8 +566,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pickButtonPurple: {
-    backgroundColor: 'rgba(123,97,255,0.08)',
-    borderColor: 'rgba(123,97,255,0.2)'
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(0,0,0,0.2)'
   },
   pickButtonText: {
     color: '#1d1d1f',

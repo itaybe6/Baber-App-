@@ -340,7 +340,7 @@ export default function AdminAppointmentsScreen() {
             d.setHours(0,0,0,0);
             setSelectedDate(d);
           }} style={styles.monthNavBtn} activeOpacity={0.7}>
-            <ChevronRight size={16} color={'#7B61FF'} />
+            <ChevronRight size={16} color={'#1C1C1E'} />
           </TouchableOpacity>
           <Text style={styles.monthText}>{(() => {
             const months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
@@ -353,7 +353,7 @@ export default function AdminAppointmentsScreen() {
             d.setHours(0,0,0,0);
             setSelectedDate(d);
           }} style={styles.monthNavBtn} activeOpacity={0.7}>
-            <ChevronLeft size={16} color={'#7B61FF'} />
+            <ChevronLeft size={16} color={'#1C1C1E'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -570,13 +570,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#EFEFFE',
+    backgroundColor: '#F2F2F7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
   },
   monthText: {
-    color: '#7B61FF',
+    color: '#1C1C1E',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -589,13 +589,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
   },
   pickDayBtn: {
-    backgroundColor: '#EFEFFE',
+    backgroundColor: '#F2F2F7',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
   },
   pickDayText: {
-    color: '#7B61FF',
+    color: '#1C1C1E',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -651,8 +651,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     right: LABELS_WIDTH + 6,
-    backgroundColor: '#F7F4FF',
-    borderColor: '#E2DAFF',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E5EA',
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 10,
@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
   },
   appointmentTime: {
     fontSize: 12,
-    color: '#7B61FF',
+    color: '#1C1C1E',
     fontWeight: '800',
     marginBottom: 2,
     textAlign: 'right',
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
   },

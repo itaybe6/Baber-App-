@@ -14,7 +14,7 @@ const FloatingCalendarButton = ({ onPress, focused }: { onPress: () => void; foc
     activeOpacity={0.8}
   >
     <LinearGradient
-      colors={['#7B61FF', '#7B61FF']}
+      colors={['#000000', '#000000']}
       style={styles.floatingGradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#F472B6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -292,8 +292,8 @@ const styles = StyleSheet.create({
     right: 4,
     bottom: 4,
     borderRadius: 26,
-    backgroundColor: 'rgba(244, 114, 182, 0.2)',
-    shadowColor: '#F472B6',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
     shadowRadius: 20,

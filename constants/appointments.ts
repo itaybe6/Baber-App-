@@ -24,12 +24,12 @@ export interface AppointmentWithService extends Appointment {
 
 // Mock services for appointments
 const mockServices: Service[] = [
-  { id: '1', name: 'מניקור בסיסי', price: 80, duration: 30, image: '', category: 'basic' },
-  { id: '2', name: 'מניקור ג׳ל', price: 120, duration: 45, image: '', category: 'gel' },
-  { id: '3', name: 'בניית ציפורניים', price: 200, duration: 90, image: '', category: 'acrylic' },
-  { id: '4', name: 'עיצוב אומנותי', price: 150, duration: 60, image: '', category: 'design' },
-  { id: '5', name: 'טיפול פרפין', price: 100, duration: 40, image: '', category: 'care' },
-  { id: '6', name: 'הסרת ג׳ל', price: 60, duration: 30, image: '', category: 'basic' },
+  { id: '1', name: 'תספורת קלאסית', price: 80, duration: 30, image: '', category: 'basic' },
+  { id: '2', name: 'תספורת מכונה', price: 120, duration: 45, image: '', category: 'gel' },
+  { id: '3', name: 'עיצוב זקן', price: 200, duration: 90, image: '', category: 'acrylic' },
+  { id: '4', name: 'תספורת ילדים', price: 150, duration: 60, image: '', category: 'design' },
+  { id: '5', name: 'טיפול פנים לגבר', price: 100, duration: 40, image: '', category: 'care' },
+  { id: '6', name: 'גילוח קלאסי בסכין', price: 60, duration: 30, image: '', category: 'basic' },
 ];
 
 // Mock appointments for the next 2 weeks

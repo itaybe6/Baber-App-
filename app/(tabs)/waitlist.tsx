@@ -322,7 +322,7 @@ export default function WaitlistScreen() {
           ) : (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="hourglass-outline" size={22} color="#7B61FF" />
+                <Ionicons name="hourglass-outline" size={22} color="#1C1C1E" />
               </View>
               <Text style={styles.emptyTitle}>אין ממתינים ליום זה</Text>
               <Text style={styles.emptySubtitle}>כרגע אין לקוחות ממתינים לים זה</Text>
@@ -367,13 +367,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#EFEFFE',
+    backgroundColor: '#F2F2F7',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
   },
   monthText: {
-    color: '#7B61FF',
+    color: '#1C1C1E',
     fontWeight: '700',
     fontSize: 14,
   },

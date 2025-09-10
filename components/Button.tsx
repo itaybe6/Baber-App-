@@ -42,20 +42,20 @@ export default function Button({
     switch (variant) {
       case 'primary':
         buttonStyle = {
-          backgroundColor: Colors.primary,
-          borderColor: Colors.primary,
+          backgroundColor: Colors.black,
+          borderColor: Colors.black,
         };
         break;
       case 'secondary':
         buttonStyle = {
-          backgroundColor: Colors.secondary,
-          borderColor: Colors.secondary,
+          backgroundColor: '#111111',
+          borderColor: '#111111',
         };
         break;
       case 'outline':
         buttonStyle = {
           backgroundColor: 'transparent',
-          borderColor: Colors.primary,
+          borderColor: Colors.black,
           borderWidth: 1,
         };
         break;
@@ -132,13 +132,13 @@ export default function Button({
       case 'outline':
         style = {
           ...style,
-          color: Colors.primary,
+          color: Colors.black,
         };
         break;
       case 'text':
         style = {
           ...style,
-          color: Colors.primary,
+          color: '#111111',
         };
         break;
     }
@@ -178,7 +178,7 @@ export default function Button({
       <View style={styles.contentContainer}>
         {loading ? (
           <ActivityIndicator 
-            color={variant === 'outline' || variant === 'text' ? Colors.primary : Colors.white} 
+            color={variant === 'outline' || variant === 'text' ? '#111111' : Colors.white} 
             size={size === 'small' ? 'small' : 'small'} 
           />
         ) : (

@@ -1,17 +1,17 @@
 export default {
-  primary: '#7B61FF', // Brand purple
-  secondary: '#000000', // Secondary is also black
-  accent: '#000000', // Accent is black
+  primary: '#000000', // Brand primary switched to black
+  secondary: '#111111', // Slightly lighter black for contrast
+  accent: '#1f1f1f', // Dark neutral accent
   background: '#ffffff', // Background is white
   card: '#ffffff', // Cards are white
   text: '#000000', // Text is black
-  subtext: '#000000', // Subtext is black
+  subtext: '#4a4a4a', // Dark gray for subtext
   border: '#000000', // Borders are black
-  success: '#000000', // Success is black
-  error: '#000000', // Error is black
-  warning: '#000000', // Warning is black
+  success: '#16a34a', // Keep functional colors distinct
+  error: '#dc2626',
+  warning: '#f59e0b',
   white: '#ffffff',
   black: '#000000',
   transparent: 'transparent',
-  overlay: '#ffffff', // Overlay is white (or could be transparent)
+  overlay: '#0a0a0a', // Dark overlay
 };

@@ -9,8 +9,9 @@ interface PrimaryButtonProps {
 }
 
 const COLORS = {
-  blue: '#8B6DE9', // סגול כהה
-  white: '#fff',
+  black: '#000000',
+  blackPressed: '#111111',
+  white: '#ffffff',
 };
 
 export default function PrimaryButton({ title, onPress, disabled, loading }: PrimaryButtonProps) {
@@ -34,7 +35,7 @@ export default function PrimaryButton({ title, onPress, disabled, loading }: Pri
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: COLORS.blue,
+    backgroundColor: COLORS.black,
     borderRadius: 14,
     height: 48,
     justifyContent: 'center',

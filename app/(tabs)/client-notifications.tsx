@@ -120,7 +120,7 @@ export default function ClientNotificationsScreen() {
         <View style={styles.mainCard}>
           <View style={styles.cardHeader}>
             <View style={styles.iconContainer}>
-              <Bell size={24} color="#7B61FF" />
+              <Bell size={24} color="#1C1C1E" />
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.cardTitle}>יצירת התראה חדשה</Text>
@@ -141,7 +141,7 @@ export default function ClientNotificationsScreen() {
                   <>
                     {(() => {
                       const IconComponent = TITLE_TO_ICON[title as keyof typeof TITLE_TO_ICON];
-                      return IconComponent ? <IconComponent size={20} color="#7B61FF" style={{ marginLeft: 12 }} /> : null;
+                      return IconComponent ? <IconComponent size={20} color="#1C1C1E" style={{ marginLeft: 12 }} /> : null;
                     })()}
                     <Text style={styles.dropdownText}>{title}</Text>
                   </>
@@ -153,9 +153,9 @@ export default function ClientNotificationsScreen() {
                 )}
               </View>
               {showDropdown ? (
-                <ChevronUp size={20} color="#7B61FF" />
+                <ChevronUp size={20} color="#1C1C1E" />
               ) : (
-                <ChevronDown size={20} color="#7B61FF" />
+                <ChevronDown size={20} color="#1C1C1E" />
               )}
             </TouchableOpacity>
             
@@ -173,7 +173,7 @@ export default function ClientNotificationsScreen() {
                       }}
                     >
                       <View style={styles.dropdownItemContent}>
-                        {IconComponent && <IconComponent size={18} color="#7B61FF" style={{ marginLeft: 12 }} />}
+                        {IconComponent && <IconComponent size={18} color="#1C1C1E" style={{ marginLeft: 12 }} />}
                         <Text style={styles.dropdownItemText}>{t}</Text>
                       </View>
                     </TouchableOpacity>
@@ -233,7 +233,7 @@ export default function ClientNotificationsScreen() {
               <View style={styles.notificationHeader}>
                 {(() => {
                   const IconComponent = TITLE_TO_ICON[title as keyof typeof TITLE_TO_ICON];
-                  return IconComponent ? <IconComponent size={20} color="#7B61FF" /> : null;
+                  return IconComponent ? <IconComponent size={20} color="#1C1C1E" /> : null;
                 })()}
                 <Text style={styles.notificationTitle}>{title}</Text>
                 <Text style={styles.notificationTime}>עכשיו</Text>
@@ -436,11 +436,11 @@ const styles = StyleSheet.create({
     fontFamily: 'FbPragmati-Regular',
   },
   sendButton: {
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#7B61FF',
+    shadowColor: '#000000',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },

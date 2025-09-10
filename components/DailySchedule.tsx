@@ -106,7 +106,7 @@ export default function DailySchedule({ nextAppointment, loading, onRefresh, tod
         >
           <View style={styles.cardHeaderRow}>
             <View style={styles.headerIconCircle}>
-              <Ionicons name="calendar-outline" size={18} color="#7B61FF" />
+              <Ionicons name="calendar-outline" size={18} color="#1C1C1E" />
             </View>
             <Text style={styles.dateText}>
               {new Date().toLocaleDateString('he-IL', { 
@@ -115,7 +115,7 @@ export default function DailySchedule({ nextAppointment, loading, onRefresh, tod
               })} {new Date().toLocaleDateString('he-IL', { weekday: 'short' })}
             </Text>
             {loadingTodayCount ? (
-              <ActivityIndicator size="small" color="#7B61FF" />
+              <ActivityIndicator size="small" color="#1C1C1E" />
             ) : (
               <View style={styles.timePillHeader}>
                 <Text style={styles.timeTextPill}>
@@ -134,7 +134,7 @@ export default function DailySchedule({ nextAppointment, loading, onRefresh, tod
         >
           <View style={styles.cardHeaderRow}>
             <View style={styles.headerIconCircle}>
-              <Ionicons name="time-outline" size={18} color="#7B61FF" />
+              <Ionicons name="time-outline" size={18} color="#1C1C1E" />
             </View>
             <Text style={styles.nextTitle}>התור הבא</Text>
           </View>
@@ -174,7 +174,7 @@ export default function DailySchedule({ nextAppointment, loading, onRefresh, tod
           ) : (
             <View style={styles.emptyStateContainer}>
               <View style={styles.emptyIconCircle}>
-                <Ionicons name="calendar-outline" size={20} color="#7B61FF" />
+                <Ionicons name="calendar-outline" size={20} color="#1C1C1E" />
               </View>
               <Text style={styles.emptyTitle}>אין תורים קרובים להיום</Text>
               <Text style={styles.emptySubtitle}>לא נקבעו עוד תורים להיום</Text>
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   headerIconCircle: {
-    backgroundColor: 'rgba(123,97,255,0.12)',
+    backgroundColor: 'rgba(0,0,0,0.08)',
     borderRadius: 16,
     width: 32,
     height: 32,
@@ -271,8 +271,8 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#7B61FF',
+    fontWeight: '700',
+    color: '#1C1C1E',
     marginBottom: 4,
     textAlign: 'right',
   },
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   timePill: {
-    backgroundColor: '#f1edff',
+    backgroundColor: '#f2f2f7',
     borderRadius: 16,
     paddingVertical: 4,
     paddingHorizontal: 14,
@@ -440,14 +440,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   timePillHeader: {
-    backgroundColor: '#f1edff',
+    backgroundColor: '#f2f2f7',
     borderRadius: 16,
     paddingVertical: 2,
     paddingHorizontal: 10,
     marginRight: 8,
   },
   timePillAppointments: {
-    backgroundColor: '#f1edff',
+    backgroundColor: '#f2f2f7',
     borderRadius: 16,
     paddingVertical: 4,
     paddingHorizontal: 14,
@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#a18cd1',
+    backgroundColor: '#1C1C1E',
     marginTop: 0,
     marginRight: 2,
   },

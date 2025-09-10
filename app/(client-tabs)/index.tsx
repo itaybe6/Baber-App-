@@ -755,7 +755,7 @@ export default function ClientHomeScreen() {
                     onPress={() => requireAuth('לצפות בתורים שלך', () => router.push('/(client-tabs)/appointments'))}
                   >
                     <LinearGradient
-                      colors={[ '#7B61FF', '#7B61FF' ]}
+                      colors={[ '#000000', '#000000' ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.appointmentActionGradient}
@@ -774,7 +774,7 @@ export default function ClientHomeScreen() {
               height={EMPTY_CARD_HEIGHT}
               radius={20}
               duration={3000}
-              strokeColor="#A78BFA"
+              strokeColor="#1C1C1E"
               strokeWidth={0}
               style={{
                 shadowColor: '#000000',
@@ -798,7 +798,7 @@ export default function ClientHomeScreen() {
               <View style={styles.mainIconContainer}>
                 <Animated.View style={[styles.iconGlow, iconPulseAnimatedStyle]} />
                 <View style={styles.iconBackground}>
-                  <Ionicons name="calendar" size={30} color="#A78BFA" />
+                  <Ionicons name="calendar" size={30} color="#1C1C1E" />
                 </View>
               </View>
 
@@ -832,7 +832,7 @@ export default function ClientHomeScreen() {
                 disabled={isBlocked}
               >
                 <LinearGradient
-                  colors={[ '#7B61FF', '#7B61FF' ]}
+                  colors={[ '#000000', '#000000' ]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.buttonGradient}
@@ -986,7 +986,7 @@ export default function ClientHomeScreen() {
                     {/* Price badge */}
                     <View style={styles.priceBadgeContainer}>
                       <LinearGradient
-                        colors={[ '#7B61FF', '#7B61FF' ]}
+                        colors={[ '#000000', '#000000' ]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.priceBadgeGradient}
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1688,15 +1688,15 @@ const styles = StyleSheet.create({
     width: 60,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#1C1C1E',
     opacity: 0.3,
   },
   perimeterStripe: {
     position: 'absolute',
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#1C1C1E',
     borderRadius: 2,
     opacity: 0.7,
-    shadowColor: '#A78BFA',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45,
     shadowRadius: 6,
@@ -2159,7 +2159,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#1C1C1E',
   },
   headerTitleContainer: {
     alignItems: 'center',

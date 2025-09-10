@@ -48,19 +48,48 @@ export const businessHoursApi = {
   // Update business hours for a specific day
   async updateBusinessHours(dayOfWeek: number, businessHours: Partial<BusinessHours>): Promise<BusinessHours | null> {
     try {
+      // Try to update an existing row first
       const { data, error } = await supabase
         .from('business_hours')
         .update(businessHours)
         .eq('day_of_week', dayOfWeek)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      // If another error occurred (not the 0-rows for single), surface it
+      if (error && (error as any)?.code !== 'PGRST116') {
         console.error('Error updating business hours:', error);
         throw error;
       }
 
-      return data;
+      // If we updated an existing row, return it
+      if (data) return data as BusinessHours;
+
+      // No existing row for this day. Upsert a new one with sensible defaults
+      const upsertRow: any = {
+        day_of_week: dayOfWeek,
+        // Defaults align with UI initial values
+        start_time: (businessHours as any)?.start_time || '09:00',
+        end_time: (businessHours as any)?.end_time || '17:00',
+        break_start_time: (businessHours as any)?.break_start_time ?? null,
+        break_end_time: (businessHours as any)?.break_end_time ?? null,
+        is_active: (businessHours as any)?.is_active ?? true,
+        slot_duration_minutes: (businessHours as any)?.slot_duration_minutes ?? 60,
+        breaks: (businessHours as any)?.breaks ?? [],
+      };
+
+      const { data: upserted, error: upsertError } = await supabase
+        .from('business_hours')
+        .upsert(upsertRow, { onConflict: 'day_of_week', ignoreDuplicates: false })
+        .select()
+        .single();
+
+      if (upsertError) {
+        console.error('Error upserting business hours:', upsertError);
+        throw upsertError;
+      }
+
+      return upserted as BusinessHours;
     } catch (error) {
       console.error('Error in updateBusinessHours:', error);
       throw error;

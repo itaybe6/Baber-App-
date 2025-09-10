@@ -24,11 +24,11 @@ import Colors from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Local palette to match the login screen's inputs
+// Local palette (male, dark-neutral accents)
 const palette = {
-  primary: '#F472B6',
-  secondary: '#A78BFA',
-  accent: '#FBBF24',
+  primary: '#000000',
+  secondary: '#1C1C1E',
+  accent: '#111111',
   textPrimary: '#1F2937',
   textSecondary: '#6B7280',
   inputBg: 'rgba(255,255,255,0.7)',
@@ -174,7 +174,7 @@ export default function RegisterScreen() {
 
   return (
     <LinearGradient
-      colors={[ '#FFFFFF', '#FAF1F6', '#F2F3FF' ]}
+      colors={[ '#FFFFFF', '#F6F6F6', '#EFEFEF' ]}
       locations={[0, 0.55, 1]}
       start={{ x: 0.2, y: 0 }}
       end={{ x: 0.8, y: 1 }}
@@ -218,8 +218,8 @@ export default function RegisterScreen() {
             >
               {/* Form header text */}
               <View style={styles.formHeader}>
-                <Text style={styles.formTitle}>הירשמי עכשיו</Text>
-                <Text style={styles.formSubtitle}>מלאי את הפרטים כדי להירשם ולהתחבר</Text>
+                <Text style={styles.formTitle}>הירשם עכשיו</Text>
+                <Text style={styles.formSubtitle}>מלא את הפרטים כדי להירשם ולהתחבר</Text>
               </View>
               {/* Name Input */}
               <View style={styles.field}>
@@ -347,7 +347,7 @@ export default function RegisterScreen() {
               {/* Register Button - styled like login CTA */}
               <TouchableOpacity onPress={handleRegister} activeOpacity={0.9} disabled={loading} style={styles.ctaShadow}>
                 <View style={styles.ctaRadiusWrap}>
-                  <LinearGradient colors={[ '#7B61FF', '#7B61FF' ]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+                  <LinearGradient colors={[ '#000000', '#000000' ]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
                     {loading ? (
                       <ActivityIndicator color={palette.white} size="small" />
                     ) : (
@@ -361,7 +361,7 @@ export default function RegisterScreen() {
               <View style={styles.loginSection}>
                 <Text style={styles.loginText}>
                   יש לך כבר חשבון? 
-                  <Text onPress={() => router.push('/login')} style={[styles.loginLink, styles.loginLinkSpacer]}>התחברי עכשיו</Text>
+                  <Text onPress={() => router.push('/login')} style={[styles.loginLink, styles.loginLinkSpacer]}>התחבר עכשיו</Text>
                 </Text>
               </View>
             </Animated.View>
@@ -570,9 +570,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   loginLink: {
-    color: '#7B61FF',
+    color: '#000000',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   loginLinkSpacer: {
     marginRight: 4,

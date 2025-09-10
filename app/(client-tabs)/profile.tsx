@@ -86,7 +86,7 @@ export default function ClientProfileScreen() {
 
       const extGuess = (contentType.split('/')[1] || 'jpg').toLowerCase();
       const randomId = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      const filePath = `avatars/${user?.id || 'anon'}/${Date.now()}_${randomId()}.${extGuess}`;
+      const filePath = `${user?.id || 'anon'}/${Date.now()}_${randomId()}.${extGuess}`;
       const { error } = await supabase.storage.from('avatars').upload(filePath, fileBody as any, { contentType, upsert: false });
       if (error) {
         console.error('avatar upload error', error);
@@ -109,7 +109,7 @@ export default function ClientProfileScreen() {
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images',
         allowsMultipleSelection: false,
         quality: 0.9,
         base64: true,

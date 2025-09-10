@@ -536,8 +536,8 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.85}
             >
-              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(123,97,255,0.12)' }]}> 
-                <Ionicons name="people-outline" size={22} color="#7B61FF" />
+              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(0,0,0,0.10)' }]}> 
+                <Ionicons name="people-outline" size={22} color="#1C1C1E" />
               </View>
               <View style={styles.statsButtonContent}>
                 {loadingStats ? (
@@ -550,8 +550,8 @@ export default function HomeScreen() {
             </TouchableOpacity>
 
             <View style={styles.statsButton}>
-              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(123,97,255,0.12)' }]}> 
-                <Ionicons name="checkmark-done-outline" size={22} color="#7B61FF" />
+              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(0,0,0,0.10)' }]}> 
+                <Ionicons name="checkmark-done-outline" size={22} color="#1C1C1E" />
               </View>
               <View style={styles.statsButtonContent}>
                 {loadingStats ? (
@@ -573,8 +573,8 @@ export default function HomeScreen() {
               style={styles.editGalleryButton}
             >
               <Text style={styles.editGalleryButtonText}>עריכת גלריה</Text>
-              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(123,97,255,0.12)', width: 28, height: 28, borderRadius: 14, marginLeft: 8 }]}> 
-                <Ionicons name="create-outline" size={18} color="#7B61FF" />
+              <View style={[styles.statsButtonIconCircle, { backgroundColor: 'rgba(0,0,0,0.10)', width: 28, height: 28, borderRadius: 14, marginLeft: 8 }]}> 
+                <Ionicons name="create-outline" size={18} color="#1C1C1E" />
               </View>
             </TouchableOpacity>
           </View>
@@ -589,7 +589,7 @@ export default function HomeScreen() {
         >
           {isLoadingDesigns ? (
             <View style={{ paddingHorizontal: 16, justifyContent: 'center' }}>
-              <ActivityIndicator size="small" color="#7B61FF" />
+              <ActivityIndicator size="small" color="#1C1C1E" />
             </View>
           ) : (
             designsFromStore.map((item) => (
@@ -741,7 +741,7 @@ export default function HomeScreen() {
              {/* Clients List */}
              {loadingClients ? (
                <View style={styles.loadingContainer}>
-                 <ActivityIndicator size="large" color="#7B61FF" />
+                 <ActivityIndicator size="large" color="#1C1C1E" />
                  <Text style={styles.loadingText}>טוען לקוחות...</Text>
                </View>
               ) : (
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     borderRadius: 10,
     minWidth: 22,
     height: 22,
@@ -1057,7 +1057,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
   statsValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#7B61FF',
+    color: '#1C1C1E',
     marginBottom: 2,
     textAlign: 'center',
   },
@@ -1303,7 +1303,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   clockIconCircle: {
-    backgroundColor: '#7B61FF',
+    backgroundColor: '#000000',
     borderRadius: 16,
     width: 32,
     height: 32,
@@ -1325,7 +1325,7 @@ const styles = StyleSheet.create({
   dailyTitleText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#7B61FF',
+    color: '#1C1C1E',
     textAlign: 'center',
     letterSpacing: 0.5,
   },
@@ -1452,15 +1452,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   filterButtonActive: {
-    backgroundColor: 'rgba(123,97,255,0.12)',
-    borderColor: '#7B61FF',
+    backgroundColor: 'rgba(0,0,0,0.10)',
+    borderColor: '#000000',
   },
   filterButtonText: {
     color: '#1d1d1f',
     fontSize: 14,
   },
   filterButtonTextActive: {
-    color: '#7B61FF',
+    color: '#000000',
     fontWeight: '600',
   },
   clientItem: {

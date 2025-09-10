@@ -216,7 +216,7 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
           <Text style={styles.headerTitle}>אילוצי עבודה</Text>
           <TouchableOpacity onPress={() => setIsExistingModalOpen(true)} style={styles.headerAction} activeOpacity={0.9}>
             <View style={styles.headerActionInner}>
-              <Ionicons name="create-outline" size={20} color={'#7B61FF'} />
+              <Ionicons name="create-outline" size={20} color={'#000000'} />
             </View>
           </TouchableOpacity>
         </View>
@@ -248,7 +248,7 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   current={singleDateISO}
                   minDate={toISODate(today)}
                   onDayPress={(d: any) => setSingleDateISO(d.dateString)}
-                  markedDates={{ [singleDateISO]: { selected: true, selectedColor: '#7B61FF' } }}
+                  markedDates={{ [singleDateISO]: { selected: true, selectedColor: '#000000' } }}
                   enableSwipeMonths
                   hideDayNames={false}
                   firstDay={0}
@@ -256,9 +256,9 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   theme={{
                     textDayFontSize: 14,
                     textMonthFontSize: 16,
-                    arrowColor: '#7B61FF',
-                    selectedDayBackgroundColor: '#7B61FF',
-                    todayTextColor: '#7B61FF',
+                    arrowColor: '#000000',
+                    selectedDayBackgroundColor: '#000000',
+                    todayTextColor: '#000000',
                     'stylesheet.calendar.header': {
                       week: {
                         flexDirection: 'row',
@@ -317,7 +317,7 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   current={singleDateISO}
                   minDate={toISODate(today)}
                   onDayPress={(d: any) => setSingleDateISO(d.dateString)}
-                  markedDates={{ [singleDateISO]: { selected: true, selectedColor: '#7B61FF' } }}
+                  markedDates={{ [singleDateISO]: { selected: true, selectedColor: '#000000' } }}
                   enableSwipeMonths
                   hideDayNames={false}
                   firstDay={0}
@@ -325,9 +325,9 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   theme={{
                     textDayFontSize: 14,
                     textMonthFontSize: 16,
-                    arrowColor: '#7B61FF',
-                    selectedDayBackgroundColor: '#7B61FF',
-                    todayTextColor: '#7B61FF',
+                    arrowColor: '#000000',
+                    selectedDayBackgroundColor: '#000000',
+                    todayTextColor: '#000000',
                     'stylesheet.calendar.header': {
                       week: {
                         flexDirection: 'row',
@@ -374,7 +374,7 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   markedDates={((): any => {
                     const marks: any = {};
                     if (rangeStartISO) {
-                      marks[rangeStartISO] = { startingDay: true, color: '#7B61FF', textColor: '#FFFFFF' };
+                      marks[rangeStartISO] = { startingDay: true, color: '#000000', textColor: '#FFFFFF' };
                     }
                     if (rangeStartISO && rangeEndISO) {
                       // Build all days between
@@ -383,11 +383,11 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                       const cur = new Date(s);
                       while (cur <= e) {
                         const iso = toISODate(cur);
-                        marks[iso] = marks[iso] || { color: 'rgba(123,97,255,0.25)', textColor: '#1C1C1E' };
+                        marks[iso] = marks[iso] || { color: 'rgba(0,0,0,0.25)', textColor: '#1C1C1E' };
                         cur.setDate(cur.getDate() + 1);
                       }
-                      marks[rangeStartISO] = { startingDay: true, color: '#7B61FF', textColor: '#FFFFFF' };
-                      marks[rangeEndISO] = { endingDay: true, color: '#7B61FF', textColor: '#FFFFFF' };
+                      marks[rangeStartISO] = { startingDay: true, color: '#000000', textColor: '#FFFFFF' };
+                      marks[rangeEndISO] = { endingDay: true, color: '#000000', textColor: '#FFFFFF' };
                     }
                     return marks;
                   })()}
@@ -407,9 +407,9 @@ export default function BusinessConstraintsModal({ visible, onClose }: BusinessC
                   theme={{
                     textDayFontSize: 14,
                     textMonthFontSize: 16,
-                    arrowColor: '#7B61FF',
-                    selectedDayBackgroundColor: '#7B61FF',
-                    todayTextColor: '#7B61FF',
+                    arrowColor: '#000000',
+                    selectedDayBackgroundColor: '#000000',
+                    todayTextColor: '#000000',
                     'stylesheet.calendar.header': {
                       week: {
                         flexDirection: 'row',
@@ -616,9 +616,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#FFFFFF', borderBottomWidth: 0.5, borderBottomColor: '#E5E5EA' },
   headerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerIconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
-  headerAction: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#7B61FF', borderRadius: 999, backgroundColor: '#FFFFFF' },
+  headerAction: { paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#000000', borderRadius: 999, backgroundColor: '#FFFFFF' },
   headerActionInner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  headerActionText: { color: '#7B61FF', fontWeight: '800' },
+  headerActionText: { color: '#000000', fontWeight: '800' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   sectionTitle: { fontSize: 16, fontWeight: '700', textAlign: 'right', marginBottom: 12, color: '#1C1C1E' },
   sectionUnderline: { alignSelf: 'flex-end', width: '35%', height: 1, backgroundColor: '#E5E5EA', marginTop: -6, marginBottom: 10 },
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   dropdownValue: { fontWeight: '800', color: '#007AFF' },
   inputWrapper: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E5E5EA', paddingHorizontal: 12, paddingVertical: 10 },
   input: { fontSize: 15, color: '#000' },
-  primaryBtn: { backgroundColor: '#7B61FF', paddingVertical: 14, borderRadius: 16, alignItems: 'center', shadowColor: '#7B61FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+  primaryBtn: { backgroundColor: '#000000', paddingVertical: 14, borderRadius: 16, alignItems: 'center', shadowColor: '#000000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
   primaryBtnText: { color: '#FFFFFF', fontWeight: '800' },
   emptyText: { color: '#8E8E93', textAlign: 'right' },
   constraintRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#E5E5EA', borderRadius: 16, padding: 12, backgroundColor: '#FFFFFF' },
@@ -645,8 +645,8 @@ const styles = StyleSheet.create({
   sectionMiniTitle: { fontSize: 13, fontWeight: '800', color: '#6B7280' },
   sectionValueText: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
   deleteBtn: { backgroundColor: '#FF3B30', borderRadius: 12, padding: 8 },
-  secondaryBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(123,97,255,0.08)', borderWidth: 1, borderColor: 'rgba(123,97,255,0.25)', paddingVertical: 10, borderRadius: 12 },
-  secondaryBtnText: { color: '#7B61FF', fontWeight: '800' },
+  secondaryBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.08)', borderWidth: 1, borderColor: 'rgba(0,0,0,0.25)', paddingVertical: 10, borderRadius: 12 },
+  secondaryBtnText: { color: '#000000', fontWeight: '800' },
   // Bottom sheet + wheel
   modalOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.25)' },
   bottomSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#F2F2F7', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 8, paddingBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 24 },
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: '#1C1C1E' },
   // Pretty constraint list
   constraintIconWrap: { marginLeft: 8 },
-  iconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(123,97,255,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(123,97,255,0.25)' },
+  iconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.08)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.25)' },
   constraintContent: { flex: 1, alignItems: 'flex-end' },
   constraintTitle: { fontSize: 15, fontWeight: '800', color: '#1C1C1E' },
   constraintMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 6 },
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   timeChipText: { color: '#1C1C1E', fontWeight: '700' },
   reasonChip: { backgroundColor: 'rgba(0,122,255,0.06)', borderWidth: 1, borderColor: 'rgba(0,122,255,0.2)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   reasonChipText: { color: '#007AFF', fontWeight: '800' },
-  smallIconBtn: { backgroundColor: '#7B61FF', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  smallIconBtn: { backgroundColor: '#000000', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
   centerModal: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   centerSheet: { width: '90%', backgroundColor: '#F2F2F7', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
 });

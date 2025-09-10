@@ -21,9 +21,9 @@ const DEFAULTS = {
   height: 160,
   radius: 16,
   duration: 3000,
-  strokeColor: "#a855f7", // סגול עדין
+  strokeColor: "#222222", // כהה ניטרלי
   strokeWidth: 2,
-  accentColor: "#F472B6",
+  accentColor: "#2e2e2e",
   duoTone: false,
 } as const;
 

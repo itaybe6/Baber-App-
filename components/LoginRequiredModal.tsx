@@ -29,7 +29,7 @@ export default function LoginRequiredModal({ visible, onClose, onLogin, title, m
             {/* Icon */}
             <View style={styles.iconContainer}>
               <View style={styles.iconBackground}>
-                <Ionicons name="person-circle-outline" size={48} color="#7B61FF" />
+                <Ionicons name="person-circle-outline" size={48} color="#1C1C1E" />
               </View>
             </View>
 
@@ -45,7 +45,7 @@ export default function LoginRequiredModal({ visible, onClose, onLogin, title, m
             <View style={styles.actions}>
               <TouchableOpacity style={styles.primaryButton} onPress={onLogin} activeOpacity={0.8}>
                 <LinearGradient
-                  colors={['#7B61FF', '#6B51E8']}
+                  colors={['#000000', '#111111']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryButtonGradient}
@@ -123,10 +123,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(123, 97, 255, 0.1)',
+    backgroundColor: 'rgba(0,0,0,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7B61FF',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#7B61FF',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,

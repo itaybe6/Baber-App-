@@ -226,7 +226,7 @@ export default function DaySelector({
             return (
               <LinearGradient
                 key={index}
-                colors={['#7B61FF', '#7B61FF']}
+                colors={[Colors.black, Colors.black]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[...common, styles.selectedDayItem]}
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   selectedDayItem: {
-    shadowColor: '#7b61ff',
+    shadowColor: Colors.black,
     shadowOpacity: 0.18,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#7B61FF',
+    backgroundColor: Colors.black,
     marginTop: 4,
   },
   selectedMarkDot: {

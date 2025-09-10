@@ -22,16 +22,16 @@ import { findUserByCredentials, isValidUserType } from '@/constants/auth';
 
 // Local palette to match the provided design (does not affect global colors)
 const palette = {
-  primary: '#F472B6',
-  secondary: '#A78BFA',
-  accent: '#FBBF24',
+  primary: '#000000',
+  secondary: '#1C1C1E',
+  accent: '#111111',
   textPrimary: '#1F2937',
   textSecondary: '#6B7280',
   inputBg: 'rgba(255,255,255,0.7)',
   inputBorder: '#E5E7EB',
   white: '#FFFFFF',
-  backgroundStart: '#FDF2F8',
-  backgroundEnd: '#F5F3FF',
+  backgroundStart: '#FFFFFF',
+  backgroundEnd: '#F5F5F5',
 };
 
 export default function LoginScreen() {
@@ -184,7 +184,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={[ '#FFFFFF', '#FAF1F6', '#F2F3FF' ]}
+      colors={[ '#FFFFFF', '#F6F6F6', '#EFEFEF' ]}
       locations={[0, 0.55, 1]}
       start={{ x: 0.2, y: 0 }}
       end={{ x: 0.8, y: 1 }}
@@ -192,14 +192,14 @@ export default function LoginScreen() {
     >
       {/* modern subtle gradient beams instead of circular blobs */}
       <LinearGradient
-        colors={[ '#7B61FF22', '#7B61FF00' ]}
+        colors={[ '#00000022', '#00000000' ]}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.beamRight}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={[ '#A78BFA26', '#FFFFFF00' ]}
+        colors={[ '#00000026', '#FFFFFF00' ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.beamTop}
@@ -212,7 +212,7 @@ export default function LoginScreen() {
               {/* Header inside card */}
               <View style={styles.headerContent}>
                 <Image source={require('@/assets/images/logo-03.png')} style={styles.logoImage} resizeMode="contain" />
-                <Text style={styles.appSubtitle}>מלאי פרטים כדי להתחבר לחשבון שלך</Text>
+                <Text style={styles.appSubtitle}>מלא פרטים כדי להתחבר לחשבון שלך</Text>
               </View>
 
               {/* Phone */}
@@ -268,7 +268,7 @@ export default function LoginScreen() {
               <Text style={styles.registerLine}>
                 אין לך חשבון? 
                 <Link href="/register" asChild>
-                  <Text style={styles.registerAction}>הירשמי עכשיו</Text>
+                  <Text style={styles.registerAction}>הירשם עכשיו</Text>
                 </Link>
               </Text>
             </View>
@@ -469,20 +469,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaOutlined: {
-    backgroundColor: 'rgba(255,255,255,0.78)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(123,97,255,0.75)',
+    borderColor: 'rgba(0,0,0,0.6)',
     borderRadius: 24,
-    shadowColor: 'rgba(123,97,255,0.4)',
+    shadowColor: 'rgba(0,0,0,0.25)',
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
   ctaText: {
-    color: '#6E5BFF',
+    color: '#000000',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   forgotPasswordButton: {
     alignItems: 'center',
@@ -500,8 +500,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   registerAction: {
-    color: '#7B61FF',
-    fontWeight: '700',
+    color: '#000000',
+    fontWeight: '800',
     fontSize: 14,
     marginRight: 4,
   },

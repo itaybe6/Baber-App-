@@ -27,7 +27,7 @@ const Colors = {
   background: '#F2F2F7',
   card: '#FFFFFF',
   primary: '#007AFF',
-  accent: '#7B61FF',
+  accent: '#000000',
   success: '#34C759',
   danger: '#FF3B30',
   warning: '#FF9500',
@@ -202,10 +202,16 @@ export default function BusinessHoursScreen() {
 
   const handleDayToggle = async (dayOfWeek: number, isActive: boolean) => {
     try {
-      await businessHoursApi.updateBusinessHours(dayOfWeek, { is_active: isActive });
-      setBusinessHours(prev => prev.map(h => 
-        h.day_of_week === dayOfWeek ? { ...h, is_active: isActive } : h
-      ));
+      const updated = await businessHoursApi.updateBusinessHours(dayOfWeek, { is_active: isActive });
+      setBusinessHours(prev => {
+        const index = prev.findIndex(h => h.day_of_week === dayOfWeek);
+        if (index >= 0) {
+          const next = prev.slice();
+          next[index] = updated ? (updated as any) : { ...next[index], is_active: isActive };
+          return next;
+        }
+        return updated ? [...prev, updated as any] : prev;
+      });
     } catch (err) {
       setError('Failed to update business hours');
       console.error(err);
@@ -352,8 +358,8 @@ export default function BusinessHoursScreen() {
             <Switch
               value={dayHours?.is_active || false}
               onValueChange={(value) => handleDayToggle(dayOfWeek, value)}
-              trackColor={{ false: Colors.border, true: 'rgba(123,97,255,0.3)' }}
-              thumbColor={(dayHours?.is_active || false) ? '#7B61FF' : Colors.card}
+              trackColor={{ false: Colors.border, true: 'rgba(0,0,0,0.3)' }}
+              thumbColor={(dayHours?.is_active || false) ? '#000000' : Colors.card}
               ios_backgroundColor={Colors.border}
               style={styles.switch}
             />
@@ -373,8 +379,8 @@ export default function BusinessHoursScreen() {
               <Switch
                 value={useBreaks}
                 onValueChange={setUseBreaks}
-                trackColor={{ false: Colors.border, true: 'rgba(123,97,255,0.3)' }}
-                thumbColor={useBreaks ? '#7B61FF' : Colors.card}
+                trackColor={{ false: Colors.border, true: 'rgba(0,0,0,0.3)' }}
+                thumbColor={useBreaks ? '#000000' : Colors.card}
                 ios_backgroundColor={Colors.border}
               />
               <Text style={{ color: Colors.text, fontWeight: '600' }}>להציג ולהגדיר הפסקות?</Text>
@@ -1104,7 +1110,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.separator,
   },
   sheetOptionSelected: {
-    backgroundColor: 'rgba(123, 97, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   sheetOptionText: {
     fontSize: 16,
@@ -1179,11 +1185,11 @@ const styles = StyleSheet.create({
     height: 40,
   },
   globalBreakCard: {
-    backgroundColor: 'rgba(123, 97, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(123, 97, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.12)',
   },
   // Work Hours Section
   workHoursSection: {

@@ -67,6 +67,8 @@ export const notifyWaitlistOnBusinessHoursUpdate = async (
     const todayIso = today.toISOString().split('T')[0];
 
     // Fetch future waitlist entries still waiting
+    // Note: For business hours updates, we typically notify all barbers' waitlists
+    // since business hours affect the entire salon, not just one barber
     const { data: entries, error } = await supabase
       .from('waitlist_entries')
       .select('*')
@@ -147,13 +149,20 @@ export const checkWaitlistAndNotify = async (cancelledAppointment: AvailableTime
     // Find waitlist entries for the same date and time period
     // Include both specific time period and 'any' time period
     // Also include entries for the same service regardless of time period
-    const { data: waitlistEntries, error: waitlistError } = await supabase
+    // Filter by user_id if the cancelled appointment has one (for specific barber)
+    let query = supabase
       .from('waitlist_entries')
       .select('*')
       .eq('requested_date', cancelledAppointment.slot_date)
       .eq('status', 'waiting')
-      .or(`time_period.eq.${timePeriod},time_period.eq.any,service_name.eq.${cancelledAppointment.service_name}`)
-      .order('created_at', { ascending: true });
+      .or(`time_period.eq.${timePeriod},time_period.eq.any,service_name.eq.${cancelledAppointment.service_name}`);
+
+    // Filter by user_id if the cancelled appointment is for a specific barber
+    if (cancelledAppointment.user_id) {
+      query = query.eq('user_id', cancelledAppointment.user_id);
+    }
+
+    const { data: waitlistEntries, error: waitlistError } = await query.order('created_at', { ascending: true });
 
     if (waitlistError) {
       console.error('❌ Error fetching waitlist entries:', waitlistError);
@@ -270,12 +279,19 @@ export const notifyServiceWaitlistClients = async (cancelledAppointment: Availab
     
     // Find waitlist entries for the same service on any future date
     const today = new Date().toISOString().split('T')[0];
-    const { data: waitlistEntries, error: waitlistError } = await supabase
+    let query = supabase
       .from('waitlist_entries')
       .select('*')
       .eq('service_name', cancelledAppointment.service_name)
       .eq('status', 'waiting')
-      .gte('requested_date', today)
+      .gte('requested_date', today);
+
+    // Filter by user_id if the cancelled appointment is for a specific barber
+    if (cancelledAppointment.user_id) {
+      query = query.eq('user_id', cancelledAppointment.user_id);
+    }
+
+    const { data: waitlistEntries, error: waitlistError } = await query
       .order('requested_date', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -382,11 +398,18 @@ export const notifyAllWaitlistClients = async (cancelledAppointment: AvailableTi
     
     // Find all waitlist entries for any future date
     const today = new Date().toISOString().split('T')[0];
-    const { data: waitlistEntries, error: waitlistError } = await supabase
+    let query = supabase
       .from('waitlist_entries')
       .select('*')
       .eq('status', 'waiting')
-      .gte('requested_date', today)
+      .gte('requested_date', today);
+
+    // Filter by user_id if the cancelled appointment is for a specific barber
+    if (cancelledAppointment.user_id) {
+      query = query.eq('user_id', cancelledAppointment.user_id);
+    }
+
+    const { data: waitlistEntries, error: waitlistError } = await query
       .order('requested_date', { ascending: true })
       .order('created_at', { ascending: true })
       .limit(50); // Limit to prevent spam

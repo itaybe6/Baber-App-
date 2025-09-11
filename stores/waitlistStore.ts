@@ -35,7 +35,8 @@ export const useWaitlistStore = create<WaitlistStore>((set, get) => ({
     clientPhone: string,
     serviceName: string,
     requestedDate: string,
-    timePeriod: 'morning' | 'afternoon' | 'evening' | 'any'
+    timePeriod: 'morning' | 'afternoon' | 'evening' | 'any',
+    userId?: string
   ) => {
     set({ isLoading: true, error: null });
     
@@ -62,6 +63,7 @@ export const useWaitlistStore = create<WaitlistStore>((set, get) => ({
           service_name: serviceName,
           requested_date: requestedDate,
           time_period: timePeriod,
+          user_id: userId,
         })
         .select()
         .single();

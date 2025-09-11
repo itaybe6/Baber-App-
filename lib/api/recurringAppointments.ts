@@ -10,6 +10,8 @@ export interface RecurringAppointment {
   repeat_interval_weeks?: number; // 1-4, default 1
   start_date?: string | null; // YYYY-MM-DD
   end_date?: string | null;   // YYYY-MM-DD
+  // New: user (barber) association - using existing users table
+  user_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -99,10 +101,16 @@ export const recurringAppointmentsApi = {
     return (data || []) as RecurringAppointment[];
   },
 
-  async listAll(): Promise<RecurringAppointment[]> {
-    const { data, error } = await supabase
+  async listAll(userId?: string): Promise<RecurringAppointment[]> {
+    let query = supabase
       .from('recurring_appointments')
-      .select('*')
+      .select('*');
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query
       .order('day_of_week', { ascending: true })
       .order('slot_time', { ascending: true })
       .order('client_name', { ascending: true });
@@ -111,6 +119,11 @@ export const recurringAppointmentsApi = {
       return [];
     }
     return (data || []) as RecurringAppointment[];
+  },
+
+  // Get recurring appointments for a specific user (barber)
+  async getByUser(userId: string): Promise<RecurringAppointment[]> {
+    return this.listAll(userId);
   },
 
   async update(id: string, updates: Partial<Omit<RecurringAppointment, 'id' | 'created_at' | 'updated_at'>>): Promise<RecurringAppointment | null> {

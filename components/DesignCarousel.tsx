@@ -255,7 +255,7 @@ export default function DesignCarousel({
             {adminUser && (
               <View style={styles.managerProfileContainer}>
                 <LinearGradient
-                  colors={['#7B61FF', '#A78BFA', '#C4B5FD']}
+                  colors={['#1C1C1E', '#1C1C1E', '#1C1C1E']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.managerProfileRing}

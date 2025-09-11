@@ -2,12 +2,17 @@ import { supabase, Design } from '../supabase';
 
 export const designsApi = {
   // Get all designs
-  async getAllDesigns(): Promise<Design[]> {
+  async getAllDesigns(userId?: string): Promise<Design[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('designs')
-        .select('*')
-        .order('popularity', { ascending: false });
+        .select('*');
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query.order('popularity', { ascending: false });
 
       if (error) {
         console.error('Error fetching designs:', error);
@@ -19,6 +24,11 @@ export const designsApi = {
       console.error('Error fetching designs:', error);
       return [];
     }
+  },
+
+  // Get designs for a specific user (barber)
+  async getDesignsByUser(userId: string): Promise<Design[]> {
+    return this.getAllDesigns(userId);
   },
 
   // Delete a design by id
@@ -50,6 +60,7 @@ export const designsApi = {
     description?: string;
     price_modifier?: number;
     is_featured?: boolean;
+    user_id?: string;
   }): Promise<Design | null> {
     try {
       const payload = {
@@ -61,6 +72,7 @@ export const designsApi = {
         description: input.description ?? null,
         price_modifier: input.price_modifier ?? 0,
         is_featured: input.is_featured ?? false,
+        user_id: input.user_id ?? null,
       } as const;
 
       const { data, error } = await supabase
@@ -154,6 +166,7 @@ export const designsApi = {
     description?: string;
     price_modifier?: number;
     is_featured?: boolean;
+    user_id?: string;
   }): Promise<Design | null> {
     try {
       const { data, error } = await supabase

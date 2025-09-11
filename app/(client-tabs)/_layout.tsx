@@ -62,7 +62,7 @@ const FloatingBookButton = ({ onPress, focused }: { onPress: () => void; focused
     >
       <Animated.View style={motionStyle}>
         <LinearGradient
-          colors={['#7B61FF', '#7B61FF']}
+          colors={['#1C1C1E', '#1C1C1E']}
           style={styles.floatingGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}

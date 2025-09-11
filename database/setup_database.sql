@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS waitlist_entries (
   requested_date DATE NOT NULL,
   time_period TEXT NOT NULL CHECK (time_period IN ('morning', 'afternoon', 'evening', 'any')),
   status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'contacted', 'booked', 'cancelled')),
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   client_phone TEXT,
   service_name TEXT,
   appointment_id TEXT,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -68,10 +70,12 @@ CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_waitlist_date_status ON waitlist_entries(requested_date, status);
 CREATE INDEX IF NOT EXISTS idx_waitlist_client ON waitlist_entries(client_phone, client_name);
 CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist_entries(created_at);
+CREATE INDEX IF NOT EXISTS idx_waitlist_user_id ON waitlist_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(slot_date);
 CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(slot_time);
 CREATE INDEX IF NOT EXISTS idx_appointments_available ON appointments(is_available);
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments(client_phone);
+CREATE INDEX IF NOT EXISTS idx_appointments_user_id ON appointments(user_id);
 
 -- Create trigger function for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -100,6 +104,17 @@ CREATE TRIGGER update_appointments_updated_at
     BEFORE UPDATE ON appointments 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Add user_id column to existing waitlist_entries table if it doesn't exist
+ALTER TABLE waitlist_entries 
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+
+-- Add user_id column to existing appointments table if it doesn't exist
+ALTER TABLE appointments 
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+
+-- Add index for user_id if it doesn't exist (ensure it's created after the column)
+CREATE INDEX IF NOT EXISTS idx_waitlist_user_id_new ON waitlist_entries(user_id);
 
 -- Disable Row Level Security (RLS) for application tables
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -173,8 +188,39 @@ ALTER TABLE business_hours DISABLE ROW LEVEL SECURITY;
   -- Disable RLS for business_profile
   ALTER TABLE business_profile DISABLE ROW LEVEL SECURITY;
 
+-- 7. Create designs table
+CREATE TABLE IF NOT EXISTS designs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  image_urls JSONB DEFAULT '[]'::jsonb,
+  categories JSONB DEFAULT '[]'::jsonb,
+  popularity INT DEFAULT 3 CHECK (popularity >= 1 AND popularity <= 5),
+  description TEXT,
+  price_modifier DECIMAL(5,2) DEFAULT 0.0,
+  is_featured BOOLEAN DEFAULT FALSE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- 7. Function: generate time slots for a given date using business hours + segments
+-- Indexes for designs table
+CREATE INDEX IF NOT EXISTS idx_designs_user_id ON designs(user_id);
+CREATE INDEX IF NOT EXISTS idx_designs_popularity ON designs(popularity);
+CREATE INDEX IF NOT EXISTS idx_designs_is_featured ON designs(is_featured);
+CREATE INDEX IF NOT EXISTS idx_designs_categories ON designs USING GIN(categories);
+
+-- Trigger for updated_at on designs
+DROP TRIGGER IF EXISTS update_designs_updated_at ON designs;
+CREATE TRIGGER update_designs_updated_at 
+    BEFORE UPDATE ON designs 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Disable RLS for designs
+ALTER TABLE designs DISABLE ROW LEVEL SECURITY;
+
+-- 8. Function: generate time slots for a given date using business hours + segments
 CREATE OR REPLACE FUNCTION public.generate_time_slots_for_date(target_date DATE)
 RETURNS VOID
 LANGUAGE plpgsql

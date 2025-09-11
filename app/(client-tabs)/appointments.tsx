@@ -17,17 +17,22 @@ type TabType = 'upcoming' | 'past';
 // API functions for client appointments
 const clientAppointmentsApi = {
   // Get user appointments for multiple dates (most efficient for user appointments)
-  async getUserAppointmentsForMultipleDates(dates: string[], userName?: string, userPhone?: string): Promise<AvailableTimeSlot[]> {
+  async getUserAppointmentsForMultipleDates(dates: string[], userName?: string, userPhone?: string, currentUserId?: string): Promise<AvailableTimeSlot[]> {
     try {
       let query = supabase
         .from('appointments')
         .select('*')
         .in('slot_date', dates)
-        .eq('is_available', false) // Only booked appointments
-        .order('slot_date')
-        .order('slot_time');
+        .eq('is_available', false); // Only booked appointments
 
-      // Filter by user if provided
+      // If this is an admin user (barber), filter by their user_id
+      if (currentUserId) {
+        query = query.eq('user_id', currentUserId);
+      }
+
+      query = query.order('slot_date').order('slot_time');
+
+      // Filter by user if provided (for client view)
       if (userName || userPhone) {
         const conditions = [];
         if (userName) {
@@ -49,7 +54,7 @@ const clientAppointmentsApi = {
         throw error;
       }
 
-      // Additional client-side filtering for exact matches
+      // Additional client-side filtering for exact matches (for client view)
       let filteredData = data || [];
       if (userName || userPhone) {
         filteredData = filteredData.filter(slot => {
@@ -211,7 +216,19 @@ export default function ClientAppointmentsScreen() {
   }, [managerPhone]);
 
   const loadUserAppointments = useCallback(async (isRefresh = false) => {
-    if (!user?.name && !user?.phone) {
+    const isAdminUser = user?.user_type === 'admin';
+    
+    // For admin users, we need user ID. For clients, we need name or phone.
+    if (isAdminUser && !user?.id) {
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    if (!isAdminUser && !user?.name && !user?.phone) {
       if (isRefresh) {
         setRefreshing(false);
       } else {
@@ -238,11 +255,14 @@ export default function ClientAppointmentsScreen() {
     }
     
     try {
-      // Fetch only user appointments directly from API
+      // For admin users (barbers), pass their user ID to filter appointments
+      // For clients, pass their name/phone for filtering
+      const isAdminUser = user?.user_type === 'admin';
       const appointments = await clientAppointmentsApi.getUserAppointmentsForMultipleDates(
         dates, 
-        user.name, 
-        user.phone
+        isAdminUser ? undefined : user.name, // Only use name/phone for client filtering
+        isAdminUser ? undefined : user.phone, // Only use name/phone for client filtering
+        isAdminUser ? user.id : undefined // Pass user ID for admin filtering
       );
       
       setUserAppointments(appointments);
@@ -296,22 +316,36 @@ export default function ClientAppointmentsScreen() {
   
   // Double-check that all appointments belong to the current user
   const verifiedUserAppointments = React.useMemo(() => {
-    if (!user?.name && !user?.phone) {
+    if (!user?.id) {
       return [];
     }
     
-    // Double-check that all appointments belong to the current user
-    const filteredAppointments = userAppointments.filter(slot => {
-      const nameMatch = slot.client_name && user?.name && 
-        slot.client_name.trim().toLowerCase() === user.name.trim().toLowerCase();
-      const phoneMatch = slot.client_phone && user?.phone && 
-        slot.client_phone.trim() === user.phone.trim();
-      
-      return nameMatch || phoneMatch;
-    });
+    const isAdminUser = user?.user_type === 'admin';
     
-    return filteredAppointments;
-  }, [userAppointments, user?.name, user?.phone]);
+    if (isAdminUser) {
+      // For admin users (barbers), check that appointments have their user_id
+      const filteredAppointments = userAppointments.filter(slot => {
+        return slot.user_id === user.id;
+      });
+      return filteredAppointments;
+    } else {
+      // For clients, check name/phone match as before
+      if (!user?.name && !user?.phone) {
+        return [];
+      }
+      
+      const filteredAppointments = userAppointments.filter(slot => {
+        const nameMatch = slot.client_name && user?.name && 
+          slot.client_name.trim().toLowerCase() === user.name.trim().toLowerCase();
+        const phoneMatch = slot.client_phone && user?.phone && 
+          slot.client_phone.trim() === user.phone.trim();
+        
+        return nameMatch || phoneMatch;
+      });
+      
+      return filteredAppointments;
+    }
+  }, [userAppointments, user?.id, user?.name, user?.phone, user?.user_type]);
   
   const upcomingAppointments = React.useMemo(() => {
     return verifiedUserAppointments.filter(slot => {
@@ -378,7 +412,22 @@ export default function ClientAppointmentsScreen() {
             </TouchableOpacity>
 
             <Text style={styles.heroServiceNameNext}>{nextAppointment!.service_name || 'שירות'}</Text>
-            {businessAddress ? (
+            
+            {/* Show client info for admin users (barbers) */}
+            {user?.user_type === 'admin' && nextAppointment!.client_name && (
+              <View style={styles.heroLocationRow}>
+                <Text style={styles.heroLocationText}>
+                  {nextAppointment!.client_name}
+                  {nextAppointment!.client_phone && ` • ${nextAppointment!.client_phone}`}
+                </Text>
+                <View style={styles.heroLocationIcon}>
+                  <Ionicons name="person" size={12} color="#7B61FF" />
+                </View>
+              </View>
+            )}
+            
+            {/* Show business address for clients */}
+            {user?.user_type !== 'admin' && businessAddress ? (
               <View style={styles.heroLocationRow}>
                 <Text style={styles.heroLocationText}>{businessAddress}</Text>
                 <View style={styles.heroLocationIcon}>
@@ -470,7 +519,22 @@ export default function ClientAppointmentsScreen() {
               </View>
 
               <Text style={styles.heroServiceName}>{item.service_name || 'שירות'}</Text>
-              {businessAddress ? (
+              
+              {/* Show client info for admin users (barbers) */}
+              {user?.user_type === 'admin' && item.client_name && (
+                <View style={styles.heroLocationRow}>
+                  <Text style={styles.heroLocationText}>
+                    {item.client_name}
+                    {item.client_phone && ` • ${item.client_phone}`}
+                  </Text>
+                  <View style={styles.heroLocationIcon}>
+                    <Ionicons name="person" size={12} color="#7B61FF" />
+                  </View>
+                </View>
+              )}
+              
+              {/* Show business address for clients */}
+              {user?.user_type !== 'admin' && businessAddress ? (
                 <View style={styles.heroLocationRow}>
                   <Text style={styles.heroLocationText}>{businessAddress}</Text>
                   <View style={styles.heroLocationIcon}>
@@ -525,7 +589,22 @@ export default function ClientAppointmentsScreen() {
             </View>
 
             <Text style={styles.heroServiceNameNext}>{item.service_name || 'שירות'}</Text>
-            {businessAddress ? (
+            
+            {/* Show client info for admin users (barbers) */}
+            {user?.user_type === 'admin' && item.client_name && (
+              <View style={styles.heroLocationRow}>
+                <Text style={styles.heroLocationText}>
+                  {item.client_name}
+                  {item.client_phone && ` • ${item.client_phone}`}
+                </Text>
+                <View style={styles.heroLocationIcon}>
+                  <Ionicons name="person" size={12} color="#7B61FF" />
+                </View>
+              </View>
+            )}
+            
+            {/* Show business address for clients */}
+            {user?.user_type !== 'admin' && businessAddress ? (
               <View style={styles.heroLocationRow}>
                 <Text style={styles.heroLocationText}>{businessAddress}</Text>
                 <View style={styles.heroLocationIcon}>
@@ -556,8 +635,12 @@ export default function ClientAppointmentsScreen() {
         <View style={styles.headerContent}>
           <View style={{ width: 22 }} />
           <View style={{ alignItems: 'center' }}>
-            <Text style={styles.headerTitle}>התורים שלי</Text>
-            <Text style={styles.headerSubtitle}>הקרובים והקודמים שלך</Text>
+            <Text style={styles.headerTitle}>
+              {user?.user_type === 'admin' ? 'הלוז שלי' : 'התורים שלי'}
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              {user?.user_type === 'admin' ? 'התורים שלך כספר' : 'הקרובים והקודמים שלך'}
+            </Text>
           </View>
           <View style={{ width: 22 }} />
         </View>
@@ -650,9 +733,14 @@ export default function ClientAppointmentsScreen() {
           >
             <NextAppointmentHero />
             <ActivityIndicator size="large" color={Colors.primary} style={{ alignSelf: 'center' }} />
-            <Text style={styles.loadingText}>טוען התורים שלך...</Text>
+            <Text style={styles.loadingText}>
+              {user?.user_type === 'admin' ? 'טוען את הלוז שלך...' : 'טוען התורים שלך...'}
+            </Text>
             <Text style={styles.loadingSubtext}>
-              {user?.name ? `מחפש תורים עבור ${user.name}` : 'מחפש תורים...'}
+              {user?.user_type === 'admin' 
+                ? (user?.name ? `טוען תורים עבור הספר ${user.name}` : 'טוען תורים...')
+                : (user?.name ? `מחפש תורים עבור ${user.name}` : 'מחפש תורים...')
+              }
             </Text>
           </ScrollView>
         ) : currentAppointments.length > 0 ? (
@@ -718,13 +806,13 @@ export default function ClientAppointmentsScreen() {
               />
               <Text style={styles.emptyTitle}>
                 {activeTab === 'upcoming' 
-                  ? 'אין תורים קרובים'
-                  : 'אין תורים קודמים'}
+                  ? (user?.user_type === 'admin' ? 'אין תורים קרובים' : 'אין תורים קרובים')
+                  : (user?.user_type === 'admin' ? 'אין תורים קודמים' : 'אין תורים קודמים')}
               </Text>
               <Text style={styles.emptySubtitle}>
                 {activeTab === 'upcoming' 
-                  ? 'התורים הקרובים שלך יופיעו כאן'
-                  : 'התורים הקודמים שלך יופיעו כאן'}
+                  ? (user?.user_type === 'admin' ? 'התורים הקרובים שלך יופיעו כאן' : 'התורים הקרובים שלך יופיעו כאן')
+                  : (user?.user_type === 'admin' ? 'התורים שטיפלת בהם יופיעו כאן' : 'התורים הקודמים שלך יופיעו כאן')}
               </Text>
             </ScrollView>
           )

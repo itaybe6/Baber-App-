@@ -103,7 +103,7 @@ const DesignTile = memo(({ item, onOpen, adminUser }: { item: DesignItem; onOpen
           {adminUser && (
             <View style={styles.managerProfileContainer}>
               <LinearGradient
-                colors={['#7B61FF', '#A78BFA', '#C4B5FD']}
+                colors={['#000000', '#333333', '#666666']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.managerProfileRing}
@@ -593,37 +593,37 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   managerProfileRing: {
-    width: 50,
-    height: 50,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     padding: 2,
-    shadowColor: '#7B61FF',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
   managerProfileInner: {
-    width: 46,
-    height: 46,
-    borderRadius: 18,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#FFFFFF',
     padding: 1,
   },
   managerProfileImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 17,
+    borderRadius: 25,
   },
   staticRing: {
     position: 'absolute',
     top: -1,
     left: -1,
-    width: 52,
-    height: 52,
-    borderRadius: 21,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 1.5,
-    borderColor: '#7B61FF',
+    borderColor: '#000000',
     opacity: 0.7,
   },
 });

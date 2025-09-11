@@ -10,7 +10,6 @@ import { clients } from '@/constants/clients';
 import { AvailableTimeSlot } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import Card from '@/components/Card';
-import ServiceCard from '@/components/ServiceCard';
 import { Calendar, Clock, ChevronLeft, ChevronRight, Star } from 'lucide-react-native';
 import DaySelector from '@/components/DaySelector';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -187,11 +186,18 @@ export default function HomeScreen() {
       setLoadingTodayCount(true);
       const today = new Date().toISOString().split('T')[0];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
         .eq('slot_date', today)
         .eq('is_available', false); // Only booked appointments
+
+      // סינון לפי המשתמש הנוכחי - רק תורים שהוא יצר
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching today appointments count:', error);
@@ -229,12 +235,19 @@ export default function HomeScreen() {
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
       
-      const { data: appointmentsData, error: appointmentsError } = await supabase
+      let appointmentsQuery = supabase
         .from('appointments')
         .select('*')
         .eq('is_available', false) // Only booked appointments
         .gte('slot_date', firstDayOfMonth) // From start of month
         .lte('slot_date', lastDayOfMonth); // To end of month
+
+      // סינון לפי המשתמש הנוכחי - רק תורים שהוא יצר
+      if (user?.id) {
+        appointmentsQuery = appointmentsQuery.eq('user_id', user.id);
+      }
+
+      const { data: appointmentsData, error: appointmentsError } = await appointmentsQuery;
 
       if (appointmentsError) {
         console.error('Error fetching completed appointments:', appointmentsError);

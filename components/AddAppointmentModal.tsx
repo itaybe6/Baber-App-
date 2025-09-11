@@ -19,6 +19,7 @@ import Colors from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 import { servicesApi } from '@/lib/api/services';
 import type { Service } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -48,6 +49,7 @@ interface AddAppointmentModalProps {
 }
 
 export default function AddAppointmentModal({ visible, onClose, onSuccess }: AddAppointmentModalProps) {
+  const user = useAuthStore((state) => state.user);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedClient, setSelectedClient] = useState<{ name: string; phone: string } | null>(null);
@@ -257,6 +259,11 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('שגיאה', 'משתמש לא מחובר');
+      return;
+    }
+
     // Final check - verify the time is still available
     const dateString = formatDateToLocalString(selectedDate);
     const { data: conflictingAppointments } = await supabase
@@ -282,6 +289,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
           client_name: selectedClient.name,
           client_phone: selectedClient.phone,
           service_name: selectedService.name,
+          user_id: user.id, // שמירת ה-ID של הספר שיוצר את התור
         });
 
       if (error) throw error;

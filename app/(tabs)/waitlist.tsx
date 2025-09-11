@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import WaitlistClientCard from '@/components/WaitlistClientCard';
 import { supabase, WaitlistEntry } from '@/lib/supabase';
 import DaySelector from '@/components/DaySelector';
+import { useAuthStore } from '@/stores/authStore';
 
 // Helper function to format date as YYYY-MM-DD in local timezone
 function formatDateToLocalString(date: Date): string {
@@ -17,16 +18,22 @@ function formatDateToLocalString(date: Date): string {
 }
 
 // Function to fetch waitlist entries by date from Supabase
-async function fetchWaitlistByDate(date: Date): Promise<WaitlistEntry[]> {
+async function fetchWaitlistByDate(date: Date, userId?: string): Promise<WaitlistEntry[]> {
   try {
     const dateString = formatDateToLocalString(date); // Format: YYYY-MM-DD
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('waitlist_entries')
       .select('*')
       .eq('requested_date', dateString)
-      .eq('status', 'waiting')
-      .order('created_at', { ascending: true });
+      .eq('status', 'waiting');
+
+    // Filter by user_id if provided (for admin users)
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: true });
 
     if (error) {
       console.error('Error fetching waitlist:', error);
@@ -114,17 +121,24 @@ function formatTimePreference(period?: 'morning' | 'afternoon' | 'evening' | 'an
 }
 
 // Fetch waitlist entries for a date range (inclusive)
-async function fetchWaitlistForRange(startDate: Date, endDate: Date): Promise<WaitlistEntry[]> {
+async function fetchWaitlistForRange(startDate: Date, endDate: Date, userId?: string): Promise<WaitlistEntry[]> {
   try {
     const startStr = formatDateToLocalString(startDate);
     const endStr = formatDateToLocalString(endDate);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('waitlist_entries')
       .select('*')
       .gte('requested_date', startStr)
       .lte('requested_date', endStr)
-      .eq('status', 'waiting')
+      .eq('status', 'waiting');
+
+    // Filter by user_id if provided (for admin users)
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error } = await query
       .order('requested_date', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -157,6 +171,7 @@ export default function WaitlistScreen() {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [phoneToImage, setPhoneToImage] = useState<Record<string, string>>({});
+  const { user } = useAuthStore();
 
   // Next 7 days (rolling from today)
   const weekDays = useMemo(() => {
@@ -186,7 +201,8 @@ export default function WaitlistScreen() {
     try {
       const start = weekDays[0];
       const end = weekDays[weekDays.length - 1];
-      const data = await fetchWaitlistForRange(start, end);
+      // Pass user.id to filter waitlist entries for this admin
+      const data = await fetchWaitlistForRange(start, end, user?.id);
       setWaitlist(data);
       const uniquePhones = Array.from(new Set((data || []).map((e) => e.client_phone).filter(Boolean)));
       if (uniquePhones.length > 0) {

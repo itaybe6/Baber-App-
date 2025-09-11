@@ -4,13 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import Colors from '@/constants/colors';
-import { Service } from '@/lib/supabase';
-import { servicesApi } from '@/lib/api/services';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MovingBorderCard from '@/components/MovingBorderCard';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import LoginRequiredModal from '@/components/LoginRequiredModal';
 import { AvailableTimeSlot } from '@/lib/supabase';
 import { notificationsApi } from '@/lib/api/notifications';
@@ -136,8 +135,6 @@ export default function ClientHomeScreen() {
   const [isLoadingWaitlist, setIsLoadingWaitlist] = useState(false);
   const [isRemovingFromWaitlist, setIsRemovingFromWaitlist] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
-  const [availableServices, setAvailableServices] = useState<Service[]>([]);
-  const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [managerPhone, setManagerPhone] = useState<string | null>(null);
@@ -393,21 +390,6 @@ export default function ClientHomeScreen() {
     fetchUnreadNotificationsCount();
   }, [fetchUnreadNotificationsCount]);
 
-  // Fetch services on mount
-  useEffect(() => {
-    const load = async () => {
-      setIsLoadingServices(true);
-      try {
-        const list = await servicesApi.getAllServices();
-        setAvailableServices(list);
-      } catch {
-        setAvailableServices([]);
-      } finally {
-        setIsLoadingServices(false);
-      }
-    };
-    load();
-  }, []);
 
   // Fetch designs on mount
   useEffect(() => {
@@ -477,12 +459,6 @@ export default function ClientHomeScreen() {
         fetchDesigns(),
         (async () => {
           try {
-            const list = await servicesApi.getAllServices();
-            setAvailableServices(list);
-          } catch { setAvailableServices([]); }
-        })(),
-        (async () => {
-          try {
             const p = await businessProfileApi.getProfile();
             setBusinessProfile(p);
           } catch { setBusinessProfile(null); }
@@ -534,45 +510,78 @@ export default function ClientHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: '#FFFFFF' }}>
-        <View style={styles.header}>
-          <View style={styles.headerSide}>
-            <TouchableOpacity
-              style={styles.notificationButton}
-              onPress={() => requireAuth('לגשׁת לפרופיל והגדרות', () => router.push('/(client-tabs)/profile'))}
-              activeOpacity={0.85}
-              accessibilityLabel="הגדרות ופרופיל"
-            >
-              <Ionicons name="settings-outline" size={24} color="#1C1C1E" />
-            </TouchableOpacity>
+      {/* Full Screen Hero with Overlay Header */}
+      <View style={styles.fullScreenHero}>
+        <Image 
+          source={require('@/assets/images/1homePage.jpg')} 
+          style={styles.fullScreenHeroImage}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.fullScreenHeroOverlay}
+        />
+        
+        {/* Header Overlay */}
+        <SafeAreaView edges={["top"]} style={styles.overlayHeader}>
+          <View style={styles.overlayHeaderContent}>
+            <View style={styles.headerSide}>
+              <TouchableOpacity
+                style={styles.overlayButton}
+                onPress={() => requireAuth('לגשׁת לפרופיל והגדרות', () => router.push('/(client-tabs)/profile'))}
+                activeOpacity={0.85}
+                accessibilityLabel="הגדרות ופרופיל"
+              >
+                <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.headerCenter}>
+              <Image source={require('@/assets/images/logo-03.png')} style={styles.overlayLogo} resizeMode="contain" />
+            </View>
+            <View style={styles.headerSide}>
+              <TouchableOpacity 
+                style={styles.overlayButton}
+                onPress={async () => {
+                  return requireAuth('לצפות בהתראות', async () => {
+                    await router.push('/(client-tabs)/notifications');
+                    setUnreadNotificationsCount(0);
+                  });
+                }}
+                activeOpacity={0.85}
+                accessibilityLabel="התראות"
+              >
+                <Ionicons name="notifications-outline" size={24} color="#FFFFFF" />
+                {unreadNotificationsCount > 0 && (
+                  <View style={styles.overlayNotificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.headerCenter}>
-            <Image source={require('@/assets/images/logo-03.png')} style={styles.logo} resizeMode="contain" />
-          </View>
-          <View style={styles.headerSide}>
-            <TouchableOpacity 
-              style={styles.notificationButton}
-              onPress={async () => {
-                return requireAuth('לצפות בהתראות', async () => {
-                  await router.push('/(client-tabs)/notifications');
-                  setUnreadNotificationsCount(0);
-                });
-              }}
-              activeOpacity={0.85}
-              accessibilityLabel="התראות"
+        </SafeAreaView>
+
+        {/* Hero Text Content */}
+        <View style={styles.fullScreenHeroContent}>
+          <View style={styles.heroTextContainer}>
+            <BlurView 
+              intensity={30} 
+              tint="light"
+              style={styles.heroTextBlurContainer}
             >
-              <Ionicons name="notifications-outline" size={24} color="#1C1C1E" />
-              {unreadNotificationsCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              <Text style={styles.heroWelcome}>ברוכים הבאים</Text>
+              <Text style={styles.heroTitle}>{user?.name || 'לקוח יקר'}</Text>
+            </BlurView>
           </View>
         </View>
-      </SafeAreaView>
+
+      </View>
+
+      {/* Content Section with Rounded Top */}
       <SafeAreaView edges={["left","right","bottom"]} style={{ flex: 1 }}>
         <View style={styles.contentWrapper}>
           <ScrollView
@@ -580,45 +589,6 @@ export default function ClientHomeScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
             showsVerticalScrollIndicator={false}
           >
-            {/* Hero Image Section */}
-            <View style={styles.heroSection}>
-              <View style={styles.heroImageContainer}>
-                <Image 
-                  source={require('@/assets/images/1homePage.jpg')} 
-                  style={styles.heroImage}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={styles.heroOverlay}
-                />
-                {/* Business Name Badge - Top Right */}
-                {businessProfile?.display_name && (
-                  <View style={styles.businessNameBadge}>
-                    <LinearGradient
-                      colors={['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.25)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.businessNameGradient}
-                    >
-                      <Text style={styles.businessNameText}>{businessProfile.display_name}</Text>
-                    </LinearGradient>
-                  </View>
-                )}
-
-                <View style={styles.heroContent}>
-                  <View style={styles.heroTextContainer}>
-                    <Text style={styles.heroWelcome}>ברוכים הבאים</Text>
-                    <Text style={styles.heroTitle}>{user?.name || 'לקוח יקר'}</Text>
-                    {businessProfile?.display_name && (
-                      <Text style={styles.heroSubtitle}>{businessProfile.display_name}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            </View>
 
         {/* Waitlist Section - Top Priority */}
         {waitlistEntries.length > 0 && (
@@ -769,83 +739,83 @@ export default function ClientHomeScreen() {
               </View>
             </View>
           ) : (
-            <MovingBorderCard
-              width={EMPTY_CARD_WIDTH}
-              height={EMPTY_CARD_HEIGHT}
-              radius={20}
-              duration={3000}
-              strokeColor="#1C1C1E"
-              strokeWidth={0}
-              style={{
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: 0.12,
-                shadowRadius: 24,
-                elevation: 12,
-                borderRadius: 20,
-              }}
-              contentStyle={{ backgroundColor: '#FFFFFF', padding: 28, alignItems: 'center', borderRadius: 20 }}
-            >
-              {/* Background Pattern */}
-              <View style={styles.backgroundPattern}>
-                <View style={[styles.patternDot, { top: 20, left: 30 }]} />
-                <View style={[styles.patternDot, { top: 50, right: 40 }]} />
-                <View style={[styles.patternDot, { bottom: 60, left: 50 }]} />
-                <View style={[styles.patternDot, { bottom: 30, right: 20 }]} />
+            <View style={styles.bookAppointmentContainer}>
+              <Image 
+                source={require('@/assets/images/bookApp.jpg')} 
+                style={styles.bookAppointmentImage}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.bookAppointmentOverlay}
+              />
+              <View style={styles.bookAppointmentLogoWrapper}>
+                <BlurView
+                  intensity={24}
+                  tint="light"
+                  style={styles.bookAppointmentLogoBlur}
+                >
+                  <Image
+                    source={require('@/assets/images/logo-03.png')}
+                    style={styles.bookAppointmentLogo}
+                    resizeMode="contain"
+                  />
+                </BlurView>
               </View>
-
-              {/* Main Icon */}
-              <View style={styles.mainIconContainer}>
-                <Animated.View style={[styles.iconGlow, iconPulseAnimatedStyle]} />
-                <View style={styles.iconBackground}>
-                  <Ionicons name="calendar" size={30} color="#1C1C1E" />
+              {businessProfile?.display_name && (
+                <View style={styles.bookAppointmentBadgeWrapper}>
+                  <BlurView
+                    intensity={24}
+                    tint="light"
+                    style={styles.bookAppointmentBadgeBlur}
+                  >
+                    <Text style={styles.bookAppointmentBadgeText}>
+                      {businessProfile.display_name}
+                    </Text>
+                  </BlurView>
                 </View>
+              )}
+              
+              {/* Content with blur background */}
+              <View style={styles.bookAppointmentContent}>
+                {/* Book Appointment Button */}
+                <TouchableOpacity
+                  style={[styles.bookAppointmentButton, isBlocked && { opacity: 0.5 }]}
+                  onPress={() => {
+                    if (!isAuthenticated) {
+                      setLoginModal({
+                        visible: true,
+                        title: 'נדרש להתחבר',
+                        message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
+                      });
+                      return;
+                    }
+                    if (isBlocked) {
+                      Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
+                      return;
+                    }
+                    router.push('/(client-tabs)/book-appointment');
+                  }}
+                  activeOpacity={0.8}
+                  disabled={isBlocked}
+                >
+                  <BlurView 
+                    intensity={30} 
+                    tint="light"
+                    style={styles.bookAppointmentButtonBlur}
+                  >
+                    <View style={styles.bookAppointmentButtonContent}>
+                      <Text style={styles.bookAppointmentButtonText}>קבע תור עכשיו</Text>
+                      <View style={styles.bookAppointmentIconCircle}>
+                        <MaterialCommunityIcons name="arrow-top-left" size={20} color="#1C1C1E" />
+                      </View>
+                    </View>
+                  </BlurView>
+                </TouchableOpacity>
               </View>
-
-              {/* Content */}
-              <View style={styles.emptyContent}>
-                <Text style={styles.emptyAppointmentText}>אין תורים קרובים</Text>
-                <Text style={styles.emptyAppointmentSubtext}>
-                  קבע תור חדש ותהנה מהשירותים המקצועיים שלנו
-                </Text>
-              </View>
-
-              {/* Action Button */}
-              <TouchableOpacity
-                style={[styles.modernActionButton, isBlocked && { opacity: 0.5 }]}
-                onPress={() => {
-                  if (!isAuthenticated) {
-                    setLoginModal({
-                      visible: true,
-                      title: 'נדרש להתחבר',
-                      message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
-                    });
-                    return;
-                  }
-                  if (isBlocked) {
-                    Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
-                    return;
-                  }
-                  router.push('/(client-tabs)/book-appointment');
-                }}
-                activeOpacity={0.8}
-                disabled={isBlocked}
-              >
-                <LinearGradient
-                  colors={[ '#000000', '#000000' ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.buttonGradient}
-                />
-                <View style={styles.buttonContent}>
-                  <View style={styles.buttonArrow}>
-                    <Ionicons name="chevron-back" size={16} color="#FFFFFF" />
-                  </View>
-                  <Text style={styles.modernButtonText}>קבע תור חדש עכשיו</Text>
-                  <View style={[styles.buttonArrow, { opacity: 0 }]} />
-                </View>
-              </TouchableOpacity>
-            </MovingBorderCard>
+            </View>
           )}
         </View>
 
@@ -869,146 +839,7 @@ export default function ClientHomeScreen() {
         )}
 
  
-         {/* Courses Section */}
-         <View style={[styles.sectionContainer, { marginTop: 16 }]}>
-          <View style={[styles.sectionHeaderModern, { marginBottom: 28 }]}>
-            <View style={styles.headerDecorationLeft}>
-              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
-            </View>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.modernTitle}>קורסים והשתלמויות</Text>
-            </View>
-            <View style={styles.headerDecorationRight}>
-              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
-            </View>
-          </View>
 
-           {/* Courses & Workshops Promo */}
-           <View style={styles.appointmentCardWrapper}>
-            <View style={styles.coursesCard} onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}>
-            <View style={styles.coursesBadge}>
-              <Text style={styles.coursesBadgeText}>קורסים והשתלמויות</Text>
-            </View>
-            <Text style={styles.coursesTitle}>מתחילות? מקצועיות?</Text>
-            <Text style={styles.coursesSubtitle}>
-              קורסים למתחילות והשתלמויות למתחילות ולמקצועיות, עם ליווי צמוד והכוונה מעשית כדי לקפוץ רמה.
-            </Text>
-            <TouchableOpacity
-              style={styles.coursesWhatsappButton}
-              onPress={async () => {
-                const message = 'היי 😊\nאני מתעניינת בקורס/השתלמות אשמח לפרטים נוספים';
-                const phone = '972503906556';
-                const appUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
-                const webUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-                try {
-                  const canOpen = await Linking.canOpenURL(appUrl);
-                  if (canOpen) {
-                    await Linking.openURL(appUrl);
-                  } else {
-                    await Linking.openURL(webUrl);
-                  }
-                } catch (e) {
-                  Alert.alert('שגיאה', 'לא ניתן לפתוח את וואטסאפ במכשיר זה');
-                }
-              }}
-              activeOpacity={0.9}
-              accessibilityLabel="יצירת קשר בוואטסאפ לגבי קורסים והשתלמויות"
-            >
-              <View style={styles.coursesWhatsappContent}>
-                <View style={styles.coursesWhatsappIconWrap}>
-                  <Ionicons name="logo-whatsapp" size={22} color="#FFFFFF" />
-                </View>
-                <Text style={styles.coursesWhatsappText}>דברו איתנו בוואטסאפ</Text>
-                <Ionicons name="chevron-back-outline" size={18} color="#FFFFFF" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        </View>
-
-        {/* Services Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderModern}>
-            <View style={styles.headerDecorationLeft}>
-              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
-            </View>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.modernTitle}>שירותים</Text>
-            </View>
-            <View style={styles.headerDecorationRight}>
-              <View style={[styles.decorationDot, { opacity: 0.1 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.2 }]} />
-              <View style={[styles.decorationDot, { opacity: 0.3 }]} />
-            </View>
-          </View>
-          {isLoadingServices ? (
-            <View style={styles.loadingCard}>
-              <Text style={styles.loadingText}>טוען שירותים...</Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.servicesScroll, styles.rtlFlip]}>
-              {availableServices.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  style={[styles.serviceCard, styles.unflip, isBlocked && { opacity: 0.5 }]}
-                  onPress={() => {
-                    if (!isAuthenticated) {
-                      setLoginModal({
-                        visible: true,
-                        title: 'נדרש להתחבר',
-                        message: 'כדי לקבוע תור יש להתחבר לחשבון שלך',
-                      });
-                      return;
-                    }
-                    if (isBlocked) {
-                      Alert.alert('חשבון חסום', 'החשבון שלך חסום ואין אפשרות לקבוע תור.');
-                      return;
-                    }
-                    router.push('/(client-tabs)/book-appointment');
-                  }}
-                  activeOpacity={0.85}
-                  disabled={isBlocked}
-                >
-                  <View style={styles.serviceImageWrapper}>
-                    {service.image_url ? (
-                      <Image source={{ uri: service.image_url }} style={styles.serviceImage} resizeMode="cover" />
-                    ) : (
-                      <View style={styles.serviceImagePlaceholder}>
-                        <Ionicons name="image-outline" size={28} color="#C7C7CC" />
-                      </View>
-                    )}
-                    {/* Price badge */}
-                    <View style={styles.priceBadgeContainer}>
-                      <LinearGradient
-                        colors={[ '#000000', '#000000' ]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.priceBadgeGradient}
-                      >
-                        <Text style={styles.priceBadgeText}>₪{service.price}</Text>
-                      </LinearGradient>
-                    </View>
-                    {/* Name overlay */}
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.6)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 0, y: 1 }}
-                      style={styles.serviceNameOverlay}
-                    >
-                      <Text style={styles.serviceNameOverlayText} numberOfLines={1}>{service.name}</Text>
-                    </LinearGradient>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
 
         {/* Social Section */}
         <View style={styles.sectionContainer}>
@@ -1128,6 +959,82 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  // Full Screen Hero Styles
+  fullScreenHero: {
+    position: 'relative',
+    height: '45%', // Takes up 45% of screen height
+    width: '100%',
+  },
+  fullScreenHeroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenHeroOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  overlayHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  overlayHeaderContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  overlayButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    shadowColor: 'rgba(0, 0, 0, 0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  overlayLogo: {
+    width: 170,
+    height: 60,
+    tintColor: '#FFFFFF',
+  },
+  overlayNotificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  fullScreenHeroContent: {
+    position: 'absolute',
+    bottom: 160,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 15,
+    alignItems: 'flex-end',
+    zIndex: 5,
+  },
   scrollContent: {
     paddingBottom: 80,
   },
@@ -1211,9 +1118,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    marginTop: 0,
-    paddingTop: 16,
+    marginTop: -20, // Overlap with hero image
+    paddingTop: 36, // Extra padding to account for overlap
     overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   logo: {
     width: 160,
@@ -1345,6 +1257,19 @@ const styles = StyleSheet.create({
   heroTextContainer: {
     flex: 1,
     alignItems: 'flex-end',
+  },
+  heroTextBlurContainer: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: 'rgba(0, 0, 0, 0.2)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: 'hidden',
   },
   heroWelcome: {
     fontSize: 16,
@@ -1552,16 +1477,16 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emptyAppointmentText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1C1C1E',
-    marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 8,
     letterSpacing: -0.3,
+    textAlign: 'center',
   },
   emptyAppointmentSubtext: {
-    fontSize: 14,
-    color: '#8E8E93',
+    fontSize: 15,
+    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 20,
@@ -1578,281 +1503,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
-  },
-  // Modern Empty State Styles
-  backgroundPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  patternDot: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F2F2F7',
-    opacity: 0.6,
-  },
-  mainIconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    position: 'relative',
-  },
-  iconGlow: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#A78BFA',
-    opacity: 0.1,
-    top: -8,
-    left: -8,
-  },
-  iconBackground: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#A78BFA',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  emptyContent: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modernActionButton: {
-    position: 'relative',
-    width: '100%',
-    height: 52,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  buttonGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 16,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    minHeight: 26,
-  },
-  buttonIconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modernButtonText: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  buttonArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomAccent: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    transform: [{ translateX: -30 }],
-    width: 60,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#1C1C1E',
-    opacity: 0.3,
-  },
-  perimeterStripe: {
-    position: 'absolute',
-    backgroundColor: '#1C1C1E',
-    borderRadius: 2,
-    opacity: 0.7,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  servicesScroll: {
-    marginHorizontal: -24,
-    paddingHorizontal: 24,
-  },
-  rtlFlip: {
-    transform: [{ scaleX: -1 }],
-  },
-  unflip: {
-    transform: [{ scaleX: -1 }],
-  },
-  serviceCard: {
-    width: 180,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    marginHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  serviceImageWrapper: {
-    height: 120,
-    backgroundColor: '#F7F7FA',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  priceBadgeContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-  },
-  priceBadgeGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  priceBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  serviceNameOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  serviceNameOverlayText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  serviceImage: {
-    width: '100%',
-    height: '100%',
-  },
-  serviceImagePlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F7F7FA',
-  },
-  serviceDetails: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  serviceNameText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  servicePriceText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#8E8E93',
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  serviceContent: {
-    position: 'relative',
-    height: 200,
-    overflow: 'hidden',
-    borderRadius: 24,
-  },
-  serviceBackgroundImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    borderRadius: 24,
-  },
-  serviceOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 20,
-  },
-  serviceInfo: {
-    alignItems: 'center',
-  },
-  serviceName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-    letterSpacing: -0.2,
-  },
-  servicePrice: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  serviceDuration: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  serviceDurationText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    letterSpacing: -0.1,
   },
   locationButton: {
     backgroundColor: '#FFFFFF',
@@ -1928,77 +1578,6 @@ const styles = StyleSheet.create({
     width: 160,
     height: 32,
     opacity: 0.9,
-  },
-  // Courses & Workshops
-  coursesCard: {
-    position: 'relative',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  coursesBadge: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#F2F2F7',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  coursesBadgeText: {
-    color: '#1C1C1E',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  coursesTitle: {
-    color: '#1C1C1E',
-    fontSize: 22,
-    fontWeight: '800',
-    textAlign: 'right',
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  coursesSubtitle: {
-    color: '#8E8E93',
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
-    textAlign: 'right',
-    marginBottom: 16,
-  },
-  coursesWhatsappButton: {
-    backgroundColor: '#25D366',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-  },
-  coursesWhatsappContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  coursesWhatsappIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coursesWhatsappText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-    marginHorizontal: 6,
   },
   loadingCard: {
     backgroundColor: '#FFFFFF',
@@ -2103,33 +1682,128 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.2,
   },
-  // Business Name Badge Styles
-  businessNameBadge: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    borderRadius: 20,
+  // Book Appointment Styles
+  bookAppointmentContainer: {
+    position: 'relative',
+    height: 280,
+    borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
-    zIndex: 10,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
+    marginHorizontal: 4,
   },
-  businessNameGradient: {
-    borderRadius: 20,
+  bookAppointmentImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  bookAppointmentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 24,
+  },
+  bookAppointmentBadgeWrapper: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    zIndex: 5,
+  },
+  bookAppointmentLogoWrapper: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    zIndex: 5,
+  },
+  bookAppointmentLogoBlur: {
+    borderRadius: 12,
+    paddingVertical: 1,
+    paddingHorizontal: -10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+  },
+  bookAppointmentLogo: {
+    width: 120,
+    height: 50,
+    tintColor: '#FFFFFF',
+    opacity: 0.95,
+  },
+  bookAppointmentBadgeBlur: {
+    borderRadius: 14,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
   },
-  businessNameText: {
+  bookAppointmentBadgeText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.1,
-    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.25)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bookAppointmentContent: {
+    position: 'absolute',
+    bottom: 32,
+    left: 24,
+    right: 24,
+    alignItems: 'flex-end',
+  },
+  bookAppointmentButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  bookAppointmentButtonBlur: {
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+  },
+  bookAppointmentButtonContent: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 6,
+  },
+  bookAppointmentButtonText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'right',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  bookAppointmentIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)'
   },
   // Modern Section Headers
   sectionHeaderModern: {

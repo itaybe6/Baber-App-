@@ -5,11 +5,12 @@ import { useRouter } from 'expo-router';
 import Colors from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDesignsStore } from '@/stores/designsStore';
-import type { Design } from '@/lib/supabase';
+import type { Design, User } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 // Using base64 (from ImagePicker) or fetch(uri).blob() as fallback
 import { supabase } from '@/lib/supabase';
+import { usersApi } from '@/lib/api/users';
 
 const { width } = Dimensions.get('window');
 const numColumns = 2;
@@ -26,11 +27,14 @@ export default function EditGalleryScreen() {
   const [pickedAssets, setPickedAssets] = useState<Array<{ uri: string; base64?: string | null; mimeType?: string | null; fileName?: string | null }>>([]);
   const [search] = useState('');
   const [createVisible, setCreateVisible] = useState(false);
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   // Edit modal state
   const [editVisible, setEditVisible] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
   const [editName, setEditName] = useState('');
+  const [editSelectedUserId, setEditSelectedUserId] = useState<string>('');
   type LocalAsset = { uri: string; base64?: string | null; mimeType?: string | null; fileName?: string | null };
   type EditImage = { kind: 'remote'; url: string } | { kind: 'local'; asset: LocalAsset };
   const [editImages, setEditImages] = useState<EditImage[]>([]);
@@ -38,7 +42,20 @@ export default function EditGalleryScreen() {
 
   useEffect(() => {
     fetchDesigns();
+    loadAdminUsers();
   }, []);
+
+  const loadAdminUsers = async () => {
+    try {
+      const users = await usersApi.getAdminUsers();
+      setAdminUsers(users);
+      if (users.length > 0) {
+        setSelectedUserId(users[0].id); // בחירת המשתמש הראשון כברירת מחדל
+      }
+    } catch (error) {
+      console.error('Error loading admin users:', error);
+    }
+  };
 
   const filtered = designs;
 
@@ -133,6 +150,7 @@ export default function EditGalleryScreen() {
   const openEdit = (design: Design) => {
     setSelectedDesign(design);
     setEditName(design.name);
+    setEditSelectedUserId(design.user_id || (adminUsers.length > 0 ? adminUsers[0].id : ''));
     const urls = (design.image_urls && design.image_urls.length > 0) ? design.image_urls : [design.image_url];
     setEditImages(urls.map(u => ({ kind: 'remote', url: u })));
     setEditVisible(true);
@@ -142,6 +160,7 @@ export default function EditGalleryScreen() {
     setEditVisible(false);
     setSelectedDesign(null);
     setEditName('');
+    setEditSelectedUserId('');
     setEditImages([]);
     setIsSavingEdit(false);
   };
@@ -206,6 +225,7 @@ export default function EditGalleryScreen() {
         name: editName.trim(),
         image_url: finalUrls[0],
         image_urls: finalUrls,
+        user_id: editSelectedUserId || undefined,
       });
 
       if (!updated) {
@@ -274,6 +294,7 @@ export default function EditGalleryScreen() {
         name: name.trim(),
         image_url: urls[0],
         image_urls: urls,
+        user_id: selectedUserId || undefined,
       });
 
       Alert.alert('הצלחה', 'העיצוב נוסף לגלריה');
@@ -365,6 +386,32 @@ export default function EditGalleryScreen() {
                       returnKeyType="done"
                     />
 
+                    {/* Admin User Selection for Edit */}
+                    {adminUsers.length > 1 && (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>בחר מנהל</Text>
+                        <View style={styles.adminSelectorContainer}>
+                          {adminUsers.map((user) => (
+                            <TouchableOpacity
+                              key={user.id}
+                              onPress={() => setEditSelectedUserId(user.id)}
+                              style={[
+                                styles.adminOption,
+                                editSelectedUserId === user.id && styles.adminOptionSelected
+                              ]}
+                            >
+                              <Text style={[
+                                styles.adminOptionText,
+                                editSelectedUserId === user.id && styles.adminOptionTextSelected
+                              ]}>
+                                {user.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+
                     {/* Thumbnails and actions */}
                     <View style={{ marginTop: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -447,6 +494,32 @@ export default function EditGalleryScreen() {
 
                   <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
                     <Text style={[styles.helperText, { marginBottom: 4 }]}>ניתן לבחור כמה תמונות. הראשונה תשמש כתמונת שער.</Text>
+
+                    {/* Admin User Selection */}
+                    {adminUsers.length > 1 && (
+                      <View style={{ marginBottom: 12 }}>
+                        <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>בחר מנהל</Text>
+                        <View style={styles.adminSelectorContainer}>
+                          {adminUsers.map((user) => (
+                            <TouchableOpacity
+                              key={user.id}
+                              onPress={() => setSelectedUserId(user.id)}
+                              style={[
+                                styles.adminOption,
+                                selectedUserId === user.id && styles.adminOptionSelected
+                              ]}
+                            >
+                              <Text style={[
+                                styles.adminOptionText,
+                                selectedUserId === user.id && styles.adminOptionTextSelected
+                              ]}>
+                                {user.name}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    )}
 
                     <TouchableOpacity onPress={pickImages} style={[styles.pickButton, styles.pickButtonPurple]} activeOpacity={0.9}>
                       <Ionicons name="images-outline" size={18} color={ACCENT_PURPLE} />
@@ -806,6 +879,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',
+  },
+  adminSelectorContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  adminOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F2F2F7',
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  adminOptionSelected: {
+    backgroundColor: ACCENT_PURPLE,
+    borderColor: ACCENT_PURPLE,
+  },
+  adminOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1D1D1F',
+    textAlign: 'center',
+  },
+  adminOptionTextSelected: {
+    color: '#FFFFFF',
   },
 });
 

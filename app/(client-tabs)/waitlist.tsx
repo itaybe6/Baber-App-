@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 export default function WaitlistScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { serviceName = 'שירות כללי', selectedDate = '' } = params as { serviceName: string; selectedDate: string };
+  const { serviceName = 'שירות כללי', selectedDate = '', barberId = '' } = params as { serviceName: string; selectedDate: string; barberId: string };
   
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod | null>(null);
   const { user } = useAuthStore();
@@ -57,7 +57,8 @@ export default function WaitlistScreen() {
         user.phone,
         serviceName,
         selectedDate,
-        selectedPeriod
+        selectedPeriod,
+        barberId || undefined
       );
 
       if (success) {

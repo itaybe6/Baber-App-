@@ -12,18 +12,25 @@ import { AvailableTimeSlot } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { notificationsApi } from '@/lib/api/notifications';
 import { businessProfileApi } from '@/lib/api/businessProfile';
+import { usersApi } from '@/lib/api/users';
+import { User } from '@/lib/supabase';
 
 
 // API functions for booking appointments
 const bookingApi = {
-  // Get available time slots for a specific date
-  async getAvailableSlots(date: string): Promise<AvailableTimeSlot[]> {
+  // Get available time slots for a specific date and barber
+  async getAvailableSlots(date: string, userId?: string): Promise<AvailableTimeSlot[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
-        .eq('slot_date', date)
-        .order('slot_time');
+        .eq('slot_date', date);
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query.order('slot_time');
 
       if (error) {
         console.error('Error fetching available slots:', error);
@@ -132,11 +139,12 @@ const bookingApi = {
     clientName: string,
     clientPhone: string,
     serviceName: string,
-    durationMinutes?: number
+    durationMinutes?: number,
+    userId?: string
   ): Promise<AvailableTimeSlot | null> {
     try {
-      // First try to update an existing available row for this date/time
-      const { data: updated, error: updateError } = await supabase
+      // First try to update an existing available row for this date/time and user
+      let updateQuery = supabase
         .from('appointments')
         .update({
           is_available: false,
@@ -147,7 +155,13 @@ const bookingApi = {
         })
         .eq('slot_date', slotDate)
         .eq('slot_time', slotTime)
-        .eq('is_available', true)
+        .eq('is_available', true);
+
+      if (userId) {
+        updateQuery = updateQuery.eq('user_id', userId);
+      }
+
+      const { data: updated, error: updateError } = await updateQuery
         .select()
         .maybeSingle();
 
@@ -155,12 +169,18 @@ const bookingApi = {
         return updated as any;
       }
 
-      // Ensure no conflicting booked row already exists
-      const { data: existing } = await supabase
+      // Ensure no conflicting booked row already exists for this user
+      let existingQuery = supabase
         .from('appointments')
         .select('id, is_available')
         .eq('slot_date', slotDate)
         .eq('slot_time', slotTime);
+
+      if (userId) {
+        existingQuery = existingQuery.eq('user_id', userId);
+      }
+
+      const { data: existing } = await existingQuery;
 
       if (existing && existing.length > 0) {
         // If there is already any row (booked or not available), prevent double-booking
@@ -178,6 +198,7 @@ const bookingApi = {
             client_name: clientName,
             client_phone: clientPhone,
             service_name: serviceName,
+            user_id: userId || null,
             duration_minutes: (typeof durationMinutes === 'number' ? durationMinutes : await (async () => {
               // Infer duration from services table if not provided
               const svc = (await supabase
@@ -259,10 +280,13 @@ export default function BookAppointment() {
   const footerBottom = Math.max(insets.bottom, 16) + 80;
   const params = (router as any).useLocalSearchParams?.() || {};
   
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState<boolean>(false);
+  const [selectedBarber, setSelectedBarber] = useState<User | null>(null);
+  const [availableBarbers, setAvailableBarbers] = useState<User[]>([]);
+  const [isLoadingBarbers, setIsLoadingBarbers] = useState<boolean>(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isBooking, setIsBooking] = useState(false);
@@ -292,6 +316,7 @@ export default function BookAppointment() {
 
       setCurrentStep(1);
       setSelectedService(null);
+      setSelectedBarber(null);
       setSelectedDay(null);
       setSelectedTime(null);
       setAvailableSlots([]);
@@ -320,9 +345,10 @@ export default function BookAppointment() {
   const days = getNext7Days();
   const selectedDate = selectedDay !== null ? days[selectedDay]?.fullDate : null;
   const footerVisible =
-    (currentStep === 1 && !!selectedService) ||
-    (currentStep === 2 && selectedDay !== null) ||
-    currentStep === 3;
+    (currentStep === 1 && !!selectedBarber) ||
+    (currentStep === 2 && !!selectedService) ||
+    (currentStep === 3 && selectedDay !== null) ||
+    currentStep === 4;
   const buttonHeight = 56;
   const contentBottomPadding = footerVisible
     ? footerBottom + buttonHeight + 12
@@ -478,23 +504,33 @@ export default function BookAppointment() {
       let error: any = null;
 
       if (phoneVariants.length > 0) {
-        const res = await supabase
+        let query = supabase
           .from('appointments')
           .select('*')
           .eq('slot_date', dateString)
           .eq('is_available', false)
-          .in('client_phone', phoneVariants)
-          .order('slot_time');
+          .in('client_phone', phoneVariants);
+
+        if (selectedBarber?.id) {
+          query = query.eq('user_id', selectedBarber.id);
+        }
+
+        const res = await query.order('slot_time');
         data = res.data as any[] | null;
         error = res.error;
       } else if (nameRaw) {
-        const res = await supabase
+        let query = supabase
           .from('appointments')
           .select('*')
           .eq('slot_date', dateString)
           .eq('is_available', false)
-          .ilike('client_name', `%${nameRaw}%`)
-          .order('slot_time');
+          .ilike('client_name', `%${nameRaw}%`);
+
+        if (selectedBarber?.id) {
+          query = query.eq('user_id', selectedBarber.id);
+        }
+
+        const res = await query.order('slot_time');
         data = res.data as any[] | null;
         error = res.error;
       } else {
@@ -523,15 +559,22 @@ export default function BookAppointment() {
       try {
         const date = days[selectedDay].fullDate;
         const dateString = date.toISOString().split('T')[0];
-        const slots = await bookingApi.getAvailableSlots(dateString);
+        const slots = await bookingApi.getAvailableSlots(dateString, selectedBarber?.id);
         // Load business hours for DOW and cache time windows on global for this session
         const dayOfWeek = date.getDay();
-        const { data: bhRow } = await supabase
+        let bhQuery = supabase
           .from('business_hours')
           .select('*')
           .eq('day_of_week', dayOfWeek)
-          .eq('is_active', true)
-          .maybeSingle();
+          .eq('is_active', true);
+
+        if (selectedBarber?.id) {
+          bhQuery = bhQuery.eq('user_id', selectedBarber.id);
+        } else {
+          bhQuery = bhQuery.is('user_id', null);
+        }
+
+        const { data: bhRow } = await bhQuery.maybeSingle();
         if (!isStale && bhRow) {
           type Window = { start: string; end: string };
           const base: Window[] = [{ start: bhRow.start_time, end: bhRow.end_time }];
@@ -588,9 +631,23 @@ export default function BookAppointment() {
       setIsLoadingSlots(false);
     }
     return () => { isStale = true; };
-  }, [selectedDay]);
+  }, [selectedDay, selectedBarber]);
 
-  // When service changes, reset selected day and time
+  // When barber changes, reset subsequent selections
+  useEffect(() => {
+    if (selectedBarber) {
+      setSelectedDay(null);
+      setSelectedTime(null);
+      setAvailableSlots([]);
+      setIsLoadingSlots(false);
+      setShowConfirmModal(false);
+      setShowReplaceModal(false);
+      setExistingAppointment(null);
+      setDayAvailability({});
+    }
+  }, [selectedBarber?.id]);
+
+  // When service changes, reset day and time selections
   useEffect(() => {
     setSelectedDay(null);
     setSelectedTime(null);
@@ -599,7 +656,6 @@ export default function BookAppointment() {
     setShowConfirmModal(false);
     setShowReplaceModal(false);
     setExistingAppointment(null);
-    setCurrentStep(1);
   }, [selectedService?.id]);
 
   // If navigated back from select-time asking to open dates screen
@@ -625,15 +681,33 @@ export default function BookAppointment() {
     }
   };
 
+  // Fetch barbers (admin users) from Supabase
+  const loadBarbers = async () => {
+    setIsLoadingBarbers(true);
+    try {
+      const list = await usersApi.getAdminUsers();
+      setAvailableBarbers(list);
+      // Auto-select first barber if only one exists
+      if (list.length === 1) {
+        setSelectedBarber(list[0]);
+      }
+    } catch (e) {
+      setAvailableBarbers([]);
+    } finally {
+      setIsLoadingBarbers(false);
+    }
+  };
+
   useEffect(() => {
     loadServices();
+    loadBarbers();
   }, []);
 
   // Prefetch availability for next 7 days when entering day selection
   useEffect(() => {
     let isStale = false;
     const prefetch = async () => {
-      if (currentStep !== 2 || !selectedService) return;
+      if (currentStep !== 3 || !selectedService || !selectedBarber) return;
       try {
         const toMinutes = (time: string) => {
           const [h, m] = String(time).split(':');
@@ -648,7 +722,7 @@ export default function BookAppointment() {
         const checks = await Promise.all(days.map(async (d) => {
           const dateStr = d.fullDate.toISOString().split('T')[0];
           // fetch existing appointments for that date
-          const slots = await bookingApi.getAvailableSlots(dateStr);
+          const slots = await bookingApi.getAvailableSlots(dateStr, selectedBarber?.id);
           const busyIntervals: { startMin: number; endMin: number }[] = (() => {
             const toMinutes = (time: string) => {
               const parts = String(time).split(':');
@@ -667,12 +741,19 @@ export default function BookAppointment() {
           })();
           // fetch business hours for that day of week
           const dow = d.fullDate.getDay();
-          const { data: bhRow } = await supabase
+          let bhQuery = supabase
             .from('business_hours')
             .select('*')
             .eq('day_of_week', dow)
-            .eq('is_active', true)
-            .maybeSingle();
+            .eq('is_active', true);
+
+          if (selectedBarber?.id) {
+            bhQuery = bhQuery.eq('user_id', selectedBarber.id);
+          } else {
+            bhQuery = bhQuery.is('user_id', null);
+          }
+
+          const { data: bhRow } = await bhQuery.maybeSingle();
           if (!bhRow) return [dateStr, 0] as const;
           type Window = { start: string; end: string };
           const base: Window[] = [{ start: bhRow.start_time, end: bhRow.end_time }];
@@ -773,7 +854,7 @@ export default function BookAppointment() {
     };
     prefetch();
     return () => { isStale = true; };
-  }, [currentStep, selectedService, refreshTick]);
+  }, [currentStep, selectedService, selectedBarber, refreshTick]);
 
   // Explicitly refresh slots for the currently selected day (used by pull-to-refresh)
   const refreshSelectedDaySlots = async () => {
@@ -782,15 +863,22 @@ export default function BookAppointment() {
     try {
       const date = days[selectedDay].fullDate;
       const dateString = date.toISOString().split('T')[0];
-      const slots = await bookingApi.getAvailableSlots(dateString);
+      const slots = await bookingApi.getAvailableSlots(dateString, selectedBarber?.id);
       // Refresh business hours windows cache for this DOW
       const dayOfWeek = date.getDay();
-      const { data: bhRow } = await supabase
+      let bhQuery = supabase
         .from('business_hours')
         .select('*')
         .eq('day_of_week', dayOfWeek)
-        .eq('is_active', true)
-        .maybeSingle();
+        .eq('is_active', true);
+
+      if (selectedBarber?.id) {
+        bhQuery = bhQuery.eq('user_id', selectedBarber.id);
+      } else {
+        bhQuery = bhQuery.is('user_id', null);
+      }
+
+      const { data: bhRow } = await bhQuery.maybeSingle();
       if (bhRow) {
         type Window = { start: string; end: string };
         const base: Window[] = [{ start: bhRow.start_time, end: bhRow.end_time }];
@@ -883,7 +971,8 @@ export default function BookAppointment() {
     const slotToBook = availableSlots.find(
       slot => slot.slot_date === dateString && 
               slot.slot_time === selectedTime && 
-              slot.is_available
+              slot.is_available &&
+              (selectedBarber?.id ? slot.user_id === selectedBarber.id : !slot.user_id)
     );
 
     setIsBooking(true);
@@ -914,7 +1003,8 @@ export default function BookAppointment() {
             user?.name || 'לקוח',
             user?.phone || '',
             selectedService.name,
-            durationMinutes
+            durationMinutes,
+            selectedBarber?.id
           );
 
       if (success) {
@@ -973,7 +1063,8 @@ export default function BookAppointment() {
     const slotToBook = availableSlots.find(
       slot => slot.slot_date === dateString && 
               slot.slot_time === selectedTime && 
-              slot.is_available
+              slot.is_available &&
+              (selectedBarber?.id ? slot.user_id === selectedBarber.id : !slot.user_id)
     );
 
     setIsCheckingAppointments(true);
@@ -1018,10 +1109,84 @@ export default function BookAppointment() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#000" />}
         >
 
-        {/* Step 1: Service Selection */}
+        {/* Step 1: Barber Selection */}
         {currentStep === 1 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, styles.sectionTitleCentered]}>בחירת שירות</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleCentered]}>בחירת ספר</Text>
+            {isLoadingBarbers ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>טוען ספרים...</Text>
+              </View>
+            ) : (
+              <View style={styles.barbersGrid}>
+                {availableBarbers.map((barber) => (
+                  <TouchableOpacity
+                    key={barber.id}
+                    style={[
+                      styles.barberCard,
+                      selectedBarber?.id === barber.id && styles.barberCardSelected
+                    ]}
+                    onPress={() => {
+                      const isSame = selectedBarber?.id === barber.id;
+                      setSelectedBarber(isSame ? null : barber);
+                      setSelectedService(null);
+                      setSelectedDay(null);
+                      setSelectedTime(null);
+                      setAvailableSlots([]);
+                      setIsLoadingSlots(false);
+                      setDayAvailability({});
+                    }}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.barberImageWrapper}>
+                      {barber.image_url ? (
+                        <>
+                          <Image source={{ uri: barber.image_url }} style={styles.barberImage} />
+                          <View style={styles.barberOverlay}>
+                            <View style={styles.barberNameContainer}>
+                              <Text style={styles.barberNameOverlay}>{barber.name}</Text>
+                              <Text style={styles.barberRoleOverlay}>ספר מקצועי</Text>
+                            </View>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <View style={styles.barberImagePlaceholder}>
+                            <Ionicons name="person" size={48} color="rgba(255,255,255,0.8)" />
+                          </View>
+                          <View style={styles.barberOverlay}>
+                            <View style={styles.barberNameContainer}>
+                              <Text style={styles.barberNameOverlay}>{barber.name}</Text>
+                              <Text style={styles.barberRoleOverlay}>ספר מקצועי</Text>
+                            </View>
+                          </View>
+                        </>
+                      )}
+                      {selectedBarber?.id === barber.id && (
+                        <View style={styles.selectedIndicatorOverlay}>
+                          <View style={styles.selectedCheckmark}>
+                            <Ionicons name="checkmark" size={20} color={Colors.white} />
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Step 2: Service Selection */}
+        {currentStep === 2 && selectedBarber && (
+          <View style={styles.section}>
+            <View style={styles.dayHeaderRow}>
+              <TouchableOpacity onPress={() => setCurrentStep(1)} style={styles.backCircle} activeOpacity={0.8}>
+                <Ionicons name="arrow-forward" size={18} color="#000000" />
+              </TouchableOpacity>
+              <Text style={[styles.sectionTitle, styles.sectionTitleCentered]}>בחירת שירות</Text>
+              <View style={{ width: 36 }} />
+            </View>
             {isLoadingServices ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>טוען שירותים...</Text>
@@ -1081,11 +1246,15 @@ export default function BookAppointment() {
           </View>
         )}
 
-        {/* Step 2: Day Selection */}
-        {currentStep >= 2 && selectedService && (
+        {/* Step 3: Day Selection */}
+        {currentStep >= 3 && selectedBarber && selectedService && (
           <View style={styles.section}>
             <View style={styles.dayHeaderRow}>
-              <TouchableOpacity onPress={() => setCurrentStep(1)} style={styles.backCircle} activeOpacity={0.8}>
+              <TouchableOpacity 
+                onPress={() => setCurrentStep(2)} 
+                style={styles.backCircle} 
+                activeOpacity={0.8}
+              >
                 <Ionicons name="arrow-forward" size={18} color="#000000" />
               </TouchableOpacity>
               <Text style={[styles.sectionTitle, styles.sectionTitleCentered]}>בחירת יום</Text>
@@ -1139,11 +1308,15 @@ export default function BookAppointment() {
           </View>
         )}
 
-        {/* Step 3: Time Selection (new screen-like) */}
-        {currentStep >= 3 && selectedService && selectedDay !== null && (
+        {/* Step 4: Time Selection */}
+        {currentStep >= 4 && selectedBarber && selectedService && selectedDay !== null && (
           <View style={styles.section}>
             <View style={styles.dayHeaderRow}>
-              <TouchableOpacity onPress={() => setCurrentStep(2)} style={styles.backCircle} activeOpacity={0.8}>
+              <TouchableOpacity 
+                onPress={() => setCurrentStep(3)} 
+                style={styles.backCircle} 
+                activeOpacity={0.8}
+              >
                 <Ionicons name="arrow-forward" size={18} color="#000000" />
               </TouchableOpacity>
               <Text style={[styles.sectionTitle, styles.sectionTitleCentered]}>בחירת שעה</Text>
@@ -1183,15 +1356,24 @@ export default function BookAppointment() {
       {/* Footer action button per step */}
       {footerVisible && (
         <View style={[styles.bookingFooter, { bottom: footerBottom }]}>
-          {currentStep === 1 && selectedService && (
+          {currentStep === 1 && selectedBarber && (
             <TouchableOpacity
               style={[styles.bookBtn]}
               onPress={() => setCurrentStep(2)}
             >
+              <Text style={styles.bookBtnText}>המשך לבחירת שירות</Text>
+            </TouchableOpacity>
+          )}
+
+          {currentStep === 2 && selectedService && (
+            <TouchableOpacity
+              style={[styles.bookBtn]}
+              onPress={() => setCurrentStep(3)}
+            >
               <Text style={styles.bookBtnText}>המשך לבחירת יום</Text>
             </TouchableOpacity>
           )}
-        {currentStep === 2 && selectedDay !== null && (() => {
+        {currentStep === 3 && selectedDay !== null && (() => {
           const dateStr = selectedDate?.toISOString().split('T')[0] || '';
           const hasAvailForSelected = dateStr ? ((dayAvailability[dateStr] ?? 0) > 0) : false;
           if (hasAvailForSelected) {
@@ -1201,18 +1383,7 @@ export default function BookAppointment() {
                   styles.bookBtn,
                   (isBooking || isCheckingAppointments) && styles.bookBtnDisabled
                 ]}
-                onPress={() => {
-                  (globalThis as any).__preserve_booking_state_on_focus__ = true;
-                  router.push({
-                    pathname: '/(client-tabs)/select-time' as any,
-                    params: {
-                      serviceName: selectedService?.name || '',
-                      durationMinutes: String(selectedService?.duration_minutes ?? 60),
-                      price: String(selectedService?.price ?? 0),
-                      selectedDate: dateStr,
-                    } as any,
-                  } as any);
-                }}
+                onPress={() => setCurrentStep(4)}
                 disabled={isBooking || isCheckingAppointments}
               >
                 <Text style={styles.bookBtnText}>המשך לבחירת שעה</Text>
@@ -1228,6 +1399,7 @@ export default function BookAppointment() {
                   params: {
                     serviceName: selectedService?.name || 'שירות כללי',
                     selectedDate: dateStr,
+                    barberId: selectedBarber?.id || '',
                   } as any,
                 } as any);
               }}
@@ -1238,7 +1410,7 @@ export default function BookAppointment() {
             </TouchableOpacity>
           );
         })()}
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <TouchableOpacity 
             style={[
               styles.bookBtn,
@@ -1267,14 +1439,56 @@ export default function BookAppointment() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>אישור קביעת תור</Text>
-              <Text style={styles.modalMessage} numberOfLines={0} allowFontScaling={false}>
-                שירות: {selectedService?.name}
-                {'\n'}
-                תאריך: {selectedDay !== null ? `${days[selectedDay].dayName} ${days[selectedDay].date}` : ''}
-                {'\n'}
-                שעה: {selectedTime}
-              </Text>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="calendar-outline" size={32} color={Colors.primary} />
+                </View>
+                <Text style={styles.modalTitle}>אישור קביעת תור</Text>
+              </View>
+              
+              <View style={styles.appointmentDetails}>
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIcon}>
+                    <Ionicons name="cut-outline" size={20} color="#6B7280" />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>שירות</Text>
+                    <Text style={styles.detailValue}>{selectedService?.name}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIcon}>
+                    <Ionicons name="calendar" size={20} color="#6B7280" />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>תאריך</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedDay !== null ? (() => {
+                        const date = days[selectedDay].fullDate;
+                        const dayName = days[selectedDay].dayName;
+                        const formattedDate = date.toLocaleDateString('he-IL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        });
+                        return `יום ${dayName}, ${formattedDate}`;
+                      })() : ''}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIcon}>
+                    <Ionicons name="time" size={20} color="#6B7280" />
+                  </View>
+                  <View style={styles.detailContent}>
+                    <Text style={styles.detailLabel}>שעה</Text>
+                    <Text style={styles.detailValue}>{selectedTime}</Text>
+                  </View>
+                </View>
+              </View>
+              
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonCancel]}
@@ -1960,6 +2174,55 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  appointmentDetails: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+  },
+  detailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  detailContent: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '700',
+    textAlign: 'right',
+  },
   modalTitle: {
     fontSize: 28,
     fontWeight: '800',
@@ -2029,5 +2292,114 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: -0.2,
+  },
+  // Barber selection styles
+  barbersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  barberCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 16,
+  },
+  barberCardSelected: {
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.25,
+    transform: [{ scale: 1.05 }],
+  },
+  barberImageWrapper: {
+    width: '100%',
+    height: 160,
+    borderRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#667eea',
+  },
+  barberImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  barberImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#667eea',
+  },
+  barberOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backdropFilter: 'blur(10px)',
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    paddingHorizontal: 12,
+  },
+  barberNameContainer: {
+    alignItems: 'center',
+  },
+  barberNameOverlay: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    marginBottom: 2,
+  },
+  barberRoleOverlay: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  selectedIndicatorOverlay: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backdropFilter: 'blur(10px)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCheckmark: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

@@ -21,6 +21,7 @@ import { businessHoursApi } from '@/lib/api/businessHours';
 import { notifyWaitlistOnBusinessHoursUpdate } from '@/lib/api/waitlistNotifications';
 import { BusinessHours } from '@/lib/supabase';
 import { businessProfileApi } from '@/lib/api/businessProfile';
+import { useAuthStore } from '@/stores/authStore';
 
 // Modern Apple-like Colors
 const Colors = {
@@ -154,6 +155,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
 
 export default function BusinessHoursScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,9 +187,13 @@ export default function BusinessHoursScreen() {
       try {
         setIsLoading(true);
         const [hoursData, profile] = await Promise.all([
-          businessHoursApi.getAllBusinessHours(),
+          // If user is admin (barber), get their specific hours, otherwise get general hours
+          user?.user_type === 'admin' && user?.id 
+            ? businessHoursApi.getBusinessHoursByUser(user.id)
+            : businessHoursApi.getAllBusinessHours().then(data => data.filter(h => !h.user_id)),
           businessProfileApi.getProfile(),
         ]);
+        
         setBusinessHours(hoursData);
         setGlobalBreakMinutes(Math.max(0, Math.min(180, Number((profile as any)?.break ?? 0))));
       } catch (err) {
@@ -198,11 +204,15 @@ export default function BusinessHoursScreen() {
       }
     };
     fetchData();
-  }, []);
+  }, [user?.id, user?.user_type]);
 
   const handleDayToggle = async (dayOfWeek: number, isActive: boolean) => {
     try {
-      const updated = await businessHoursApi.updateBusinessHours(dayOfWeek, { is_active: isActive });
+      const updated = await businessHoursApi.updateBusinessHours(
+        dayOfWeek, 
+        { is_active: isActive }, 
+        user?.user_type === 'admin' ? user?.id : undefined
+      );
       setBusinessHours(prev => {
         const index = prev.findIndex(h => h.day_of_week === dayOfWeek);
         if (index >= 0) {
@@ -264,7 +274,7 @@ export default function BusinessHoursScreen() {
           break_start_time: useBreaks ? tempBreakStartTime : undefined,
           break_end_time: useBreaks ? tempBreakEndTime : undefined,
           breaks: useBreaks ? tempBreaks : [],
-        });
+        }, user?.user_type === 'admin' ? user?.id : undefined);
         setBusinessHours(prev => prev.map(h => 
           h.day_of_week === editingDay ? { 
             ...h, 
@@ -550,6 +560,9 @@ export default function BusinessHoursScreen() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: Colors.card }}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>שעות פעילות</Text>
+          {user?.user_type === 'admin' && user?.name && (
+            <Text style={styles.headerSubtitle}>של הספר {user.name}</Text>
+          )}
         </View>
       </SafeAreaView>
 
@@ -560,6 +573,7 @@ export default function BusinessHoursScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+
         {/* Constraints button */}
         <View style={{ paddingHorizontal: 24, marginBottom: 12 }}>
           <TouchableOpacity
@@ -640,6 +654,7 @@ export default function BusinessHoursScreen() {
             </View>
           </View>
         </Modal>
+
 
         {/* Error Message */}
         {error && (
@@ -744,6 +759,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
     letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.secondaryText,
+    textAlign: 'center',
+    marginTop: 4,
   },
   headerSpacer: {
     width: 44,

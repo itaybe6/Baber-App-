@@ -2,12 +2,17 @@ import { supabase, BusinessHours } from '../supabase';
 
 export const businessHoursApi = {
   // Get all business hours
-  async getAllBusinessHours(): Promise<BusinessHours[]> {
+  async getAllBusinessHours(userId?: string): Promise<BusinessHours[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('business_hours')
-        .select('*')
-        .order('day_of_week');
+        .select('*');
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query.order('day_of_week');
 
       if (error) {
         console.error('Error fetching business hours:', error);
@@ -19,6 +24,11 @@ export const businessHoursApi = {
       console.error('Error in getAllBusinessHours:', error);
       throw error;
     }
+  },
+
+  // Get business hours for a specific user (barber)
+  async getBusinessHoursByUser(userId: string): Promise<BusinessHours[]> {
+    return this.getAllBusinessHours(userId);
   },
 
   // Update slot duration for all days
@@ -45,14 +55,22 @@ export const businessHoursApi = {
   },
 
 
-  // Update business hours for a specific day
-  async updateBusinessHours(dayOfWeek: number, businessHours: Partial<BusinessHours>): Promise<BusinessHours | null> {
+  // Update business hours for a specific day and user (barber)
+  async updateBusinessHours(dayOfWeek: number, businessHours: Partial<BusinessHours>, userId?: string): Promise<BusinessHours | null> {
     try {
       // Try to update an existing row first
-      const { data, error } = await supabase
+      let query = supabase
         .from('business_hours')
         .update(businessHours)
-        .eq('day_of_week', dayOfWeek)
+        .eq('day_of_week', dayOfWeek);
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+
+      const { data, error } = await query
         .select()
         .maybeSingle();
 
@@ -65,9 +83,10 @@ export const businessHoursApi = {
       // If we updated an existing row, return it
       if (data) return data as BusinessHours;
 
-      // No existing row for this day. Upsert a new one with sensible defaults
+      // No existing row for this day and user. Upsert a new one with sensible defaults
       const upsertRow: any = {
         day_of_week: dayOfWeek,
+        user_id: userId || null,
         // Defaults align with UI initial values
         start_time: (businessHours as any)?.start_time || '09:00',
         end_time: (businessHours as any)?.end_time || '17:00',
@@ -80,7 +99,7 @@ export const businessHoursApi = {
 
       const { data: upserted, error: upsertError } = await supabase
         .from('business_hours')
-        .upsert(upsertRow, { onConflict: 'day_of_week', ignoreDuplicates: false })
+        .upsert(upsertRow, { onConflict: 'day_of_week,user_id', ignoreDuplicates: false })
         .select()
         .single();
 
@@ -121,7 +140,7 @@ export const businessHoursApi = {
   },
 
   // Generate time slots based on business hours
-  async generateTimeSlotsForDate(date: string): Promise<any[]> {
+  async generateTimeSlotsForDate(date: string, userId?: string): Promise<any[]> {
     try {
       // Helper: apply recurring appointments for a given date after slots exist
       const applyRecurringAssignments = async (targetDate: string) => {
@@ -180,30 +199,53 @@ export const businessHoursApi = {
       const dayOfWeek = new Date(date).getDay();
       
       // Get business hours row for this day (for is_active + slot_duration)
-      const { data: businessHours, error: bhError } = await supabase
+      let query = supabase
         .from('business_hours')
         .select('*')
         .eq('day_of_week', dayOfWeek)
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      } else {
+        query = query.is('user_id', null);
+      }
+
+      const { data: businessHours, error: bhError } = await query.single();
 
       if (bhError || !businessHours) {
         // No business hours found for day
-        await supabase
+        let deleteQuery = supabase
           .from('appointments')
           .delete()
           .eq('slot_date', date)
           .eq('is_available', true);
+
+        if (userId) {
+          deleteQuery = deleteQuery.eq('user_id', userId);
+        } else {
+          deleteQuery = deleteQuery.is('user_id', null);
+        }
+
+        await deleteQuery;
         return [];
       }
 
-      // First, delete only available (not booked) slots for this date
+      // First, delete only available (not booked) slots for this date and user
       // This allows us to recreate the schedule without affecting booked appointments
-        const { error: deleteError } = await supabase
+      let deleteQuery = supabase
         .from('appointments')
         .delete()
         .eq('slot_date', date)
         .eq('is_available', true);
+
+      if (userId) {
+        deleteQuery = deleteQuery.eq('user_id', userId);
+      } else {
+        deleteQuery = deleteQuery.is('user_id', null);
+      }
+
+      const { error: deleteError } = await deleteQuery;
 
       if (deleteError) {
         console.error('Error deleting available slots:', deleteError);
@@ -313,6 +355,7 @@ export const businessHoursApi = {
             client_phone: null,
             service_name: null,
             appointment_id: null,
+            user_id: userId || null,
           });
           t = addMinutes(t, slotDurationMinutes);
         }
@@ -322,7 +365,7 @@ export const businessHoursApi = {
       if (slots.length > 0) {
         const { error: insertError } = await supabase
           .from('appointments')
-          .upsert(slots, { onConflict: 'slot_date,slot_time', ignoreDuplicates: true })
+          .upsert(slots, { onConflict: 'slot_date,slot_time,user_id', ignoreDuplicates: true })
           .select();
 
         if (insertError) {
@@ -334,12 +377,19 @@ export const businessHoursApi = {
       // Apply recurring assignments after slots exist
       await applyRecurringAssignments(date);
 
-      // Return final slots for the date
-      const { data: finalSlots, error: finalFetchError } = await supabase
+      // Return final slots for the date and user
+      let finalQuery = supabase
         .from('appointments')
         .select('*')
-        .eq('slot_date', date)
-        .order('slot_time');
+        .eq('slot_date', date);
+
+      if (userId) {
+        finalQuery = finalQuery.eq('user_id', userId);
+      } else {
+        finalQuery = finalQuery.is('user_id', null);
+      }
+
+      const { data: finalSlots, error: finalFetchError } = await finalQuery.order('slot_time');
 
       if (finalFetchError) {
         console.error('Error fetching final slots:', finalFetchError);

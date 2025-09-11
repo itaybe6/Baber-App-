@@ -139,6 +139,28 @@ export const usersApi = {
       return null;
     }
   },
+
+  // Get all admin users (barbers)
+  async getAdminUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('user_type', 'admin')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching admin users:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+      return [];
+    }
+  },
+
   // Delete user by ID
   async deleteUser(id: string): Promise<boolean> {
     try {

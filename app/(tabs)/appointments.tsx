@@ -20,6 +20,7 @@ import { AvailableTimeSlot, supabase } from '@/lib/supabase';
 import { businessHoursApi } from '@/lib/api/businessHours';
 import { Ionicons } from '@expo/vector-icons';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useAuthStore } from '@/stores/authStore';
 
 // Press feedback: scale-on-press animated touchable
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
@@ -75,6 +76,7 @@ const PressableScale = ({ onPress, style, children, disabled, hitSlop, pressRete
 };
 
 export default function AdminAppointmentsScreen() {
+  const user = useAuthStore((state) => state.user);
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -114,12 +116,18 @@ export default function AdminAppointmentsScreen() {
       // Ensure slots exist for the day (idempotent and will not override booked ones)
       await businessHoursApi.generateTimeSlotsForDate(dateString);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
         .select('*')
         .eq('slot_date', dateString)
-        .eq('is_available', false) // booked only
-        .order('slot_time', { ascending: true });
+        .eq('is_available', false); // booked only
+
+      // סינון לפי המשתמש הנוכחי - רק תורים שהוא יצר
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query.order('slot_time', { ascending: true });
 
       if (error) {
         console.error('Error loading appointments for date:', error);

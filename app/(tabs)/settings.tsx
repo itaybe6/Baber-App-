@@ -59,7 +59,7 @@ function AppSwitch({ value, onValueChange }: { value: boolean; onValueChange: (v
       onValueChange={onValueChange}
       trackColor={{
         false: '#E5E5EA',
-        true: 'rgba(123, 97, 255, 0.35)',
+        true: 'rgba(28, 28, 30, 0.2)',
       }}
       thumbColor={value ? '#000000' : '#FFFFFF'}
       ios_backgroundColor={'#E5E5EA'}
@@ -1064,7 +1064,7 @@ export default function SettingsScreen() {
               style={styles.adminAvatarRing}
             >
               <View style={styles.adminAvatar}>
-                <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-02.png')} style={styles.adminAvatarImage} resizeMode="cover" />
+                <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-03.png')} style={styles.adminAvatarImage} resizeMode="cover" />
               </View>
             </LinearGradient>
             <TouchableOpacity
@@ -1383,7 +1383,7 @@ export default function SettingsScreen() {
                   style={styles.modalAvatarRing}
                 >
                   <TouchableOpacity style={styles.modalAvatar} onPress={handlePickAdminAvatar} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel="שנה תמונת מנהלת">
-                    <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-02.png')} style={styles.modalAvatarImage} resizeMode="cover" />
+                    <Image source={user?.image_url ? { uri: (user as any).image_url } : require('@/assets/images/logo-03.png')} style={styles.modalAvatarImage} resizeMode="cover" />
                     {isUploadingAdminAvatar && (
                       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 36 }}>
                         <ActivityIndicator size="small" color={Colors.primary} />

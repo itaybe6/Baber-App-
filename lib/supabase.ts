@@ -99,6 +99,8 @@ export interface Design {
   description?: string;
   price_modifier: number;
   is_featured: boolean;
+  // New: user (barber) association - using existing users table
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +140,8 @@ export interface BusinessHours {
   slot_duration_minutes?: number;
   // New: multiple breaks stored as JSON array of { start_time, end_time }
   breaks?: Array<{ start_time: string; end_time: string }>;
+  // New: user (barber) association - using existing users table
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -154,6 +158,8 @@ export interface AvailableTimeSlot {
   // Duration of the appointment in minutes
   duration_minutes: number;
   appointment_id?: string | null;
+  // New: user (barber) association - using existing users table
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -178,6 +184,8 @@ export interface WaitlistEntry {
   requested_date: string; // YYYY-MM-DD format
   time_period: 'morning' | 'afternoon' | 'evening' | 'any'; // Preferred time period
   status: 'waiting' | 'contacted' | 'booked' | 'cancelled';
+  // New: user (barber) association - using existing users table
+  user_id?: string | null;
   created_at: string;
   updated_at: string;
 }

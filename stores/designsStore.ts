@@ -22,6 +22,7 @@ interface DesignsState {
     description?: string;
     price_modifier?: number;
     is_featured?: boolean;
+    user_id?: string;
   }) => Promise<Design | null>;
   updateDesign: (id: string, updates: {
     name?: string;
@@ -32,6 +33,7 @@ interface DesignsState {
     description?: string;
     price_modifier?: number;
     is_featured?: boolean;
+    user_id?: string;
   }) => Promise<Design | null>;
   deleteDesign: (id: string) => Promise<boolean>;
 }

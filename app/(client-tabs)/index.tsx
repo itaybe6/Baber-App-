@@ -691,53 +691,49 @@ export default function ClientHomeScreen() {
               <Text style={styles.loadingText}>טוען תורים...</Text>
             </View>
           ) : nextAppointment ? (
-            <View style={styles.appointmentCardWrapper}>
-              <View style={styles.appointmentCard} onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}>
-              <View style={styles.appointmentHeader}>
-                <View style={styles.appointmentStatus}>
-                  <Animated.View style={[styles.statusDot, statusDotAnimatedStyle]} />
-                  <Text style={styles.appointmentStatusText}>
-                    {'מאושר'}
-                  </Text>
-                </View>
-                <View style={styles.appointmentInfo}>
-                  <Text style={styles.appointmentLabel}>התור הבא שלך</Text>
-                  <Text style={styles.appointmentService}>{nextAppointment.service_name || 'שירות'}</Text>
-                  <Text style={styles.appointmentSubtext}>התור נקבע לתאריך ושעה:</Text>
-                  <View style={[styles.appointmentDetails, styles.appointmentDetailsPill]}>
-                    <View style={styles.appointmentDetail}>
-                      <Ionicons name="calendar-outline" size={16} color="#8E8E93" />
-                      <Text style={styles.appointmentDetailText}>{formatDate(nextAppointment.slot_date)}</Text>
-                    </View>
-                    <View style={styles.detailsDivider} />
-                    <View style={styles.appointmentDetail}>
-                      <Ionicons name="time-outline" size={16} color="#8E8E93" />
-                      <Text style={styles.appointmentDetailText}>{formatTime(nextAppointment.slot_time)}</Text>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => requireAuth('לצפות בתורים שלך', () => router.push('/(client-tabs)/appointments'))}
+              style={styles.nextAppointmentContainer}
+            >
+              <Image 
+                source={require('@/assets/images/nextApp.jpg')} 
+                style={styles.nextAppointmentImage}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.nextAppointmentOverlay}
+              />
+              
+
+              {/* Main Content with Blur Background */}
+              <View style={styles.nextAppointmentContent}>
+                <BlurView 
+                  intensity={30} 
+                  tint="light"
+                  style={styles.nextAppointmentInfoBlur}
+                >
+                  <View style={styles.appointmentInfo}>
+                    <Text style={styles.nextAppointmentLabel}>התור הבא שלך</Text>
+                    <Text style={styles.nextAppointmentService}>{nextAppointment.service_name || 'שירות'}</Text>
+                    <View style={styles.nextAppointmentDetails}>
+                      <View style={styles.appointmentDetail}>
+                        <Ionicons name="calendar-outline" size={16} color="rgba(255, 255, 255, 0.8)" />
+                        <Text style={styles.nextAppointmentDetailText}>{formatDate(nextAppointment.slot_date)}</Text>
+                      </View>
+                      <View style={styles.nextAppointmentDetailsDivider} />
+                      <View style={styles.appointmentDetail}>
+                        <Ionicons name="time-outline" size={16} color="rgba(255, 255, 255, 0.8)" />
+                        <Text style={styles.nextAppointmentDetailText}>{formatTime(nextAppointment.slot_time)}</Text>
+                      </View>
                     </View>
                   </View>
-                </View>
+                </BlurView>
               </View>
-              <View style={styles.appointmentAction}>
-                <View style={styles.appointmentActionsRow}>
-                  <TouchableOpacity
-                    style={styles.appointmentActionButton}
-                    activeOpacity={0.9}
-                    onPress={() => requireAuth('לצפות בתורים שלך', () => router.push('/(client-tabs)/appointments'))}
-                  >
-                    <LinearGradient
-                      colors={[ '#000000', '#000000' ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.appointmentActionGradient}
-                    >
-                      <Text style={styles.appointmentActionButtonText}>צפייה בפרטים</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              {/* removed animated border overlay */}
-              </View>
-            </View>
+            </TouchableOpacity>
           ) : (
             <View style={styles.bookAppointmentContainer}>
               <Image 
@@ -751,19 +747,6 @@ export default function ClientHomeScreen() {
                 end={{ x: 0, y: 1 }}
                 style={styles.bookAppointmentOverlay}
               />
-              <View style={styles.bookAppointmentLogoWrapper}>
-                <BlurView
-                  intensity={24}
-                  tint="light"
-                  style={styles.bookAppointmentLogoBlur}
-                >
-                  <Image
-                    source={require('@/assets/images/logo-03.png')}
-                    style={styles.bookAppointmentLogo}
-                    resizeMode="contain"
-                  />
-                </BlurView>
-              </View>
               {businessProfile?.display_name && (
                 <View style={styles.bookAppointmentBadgeWrapper}>
                   <BlurView
@@ -1016,7 +999,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#000000',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -1714,26 +1697,6 @@ const styles = StyleSheet.create({
     left: 14,
     zIndex: 5,
   },
-  bookAppointmentLogoWrapper: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    zIndex: 5,
-  },
-  bookAppointmentLogoBlur: {
-    borderRadius: 12,
-    paddingVertical: 1,
-    paddingHorizontal: -10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    overflow: 'hidden',
-  },
-  bookAppointmentLogo: {
-    width: 120,
-    height: 50,
-    tintColor: '#FFFFFF',
-    opacity: 0.95,
-  },
   bookAppointmentBadgeBlur: {
     borderRadius: 14,
     paddingVertical: 8,
@@ -1845,6 +1808,92 @@ const styles = StyleSheet.create({
     color: '#1C1C1E',
     textAlign: 'center',
     letterSpacing: -0.5,
+  },
+  // Next Appointment with Background Image Styles
+  nextAppointmentContainer: {
+    position: 'relative',
+    height: 220,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 12,
+    marginHorizontal: 4,
+  },
+  nextAppointmentImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  nextAppointmentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 24,
+  },
+  nextAppointmentContent: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+  nextAppointmentInfoBlur: {
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+    shadowColor: 'rgba(0, 0, 0, 0.2)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  nextAppointmentLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    textAlign: 'right',
+    letterSpacing: -0.1,
+    marginBottom: 6,
+  },
+  nextAppointmentService: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    textAlign: 'right',
+    letterSpacing: -0.4,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  nextAppointmentDetails: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  nextAppointmentDetailText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  nextAppointmentDetailsDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
 });
 

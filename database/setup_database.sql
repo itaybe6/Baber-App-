@@ -220,7 +220,40 @@ CREATE TRIGGER update_designs_updated_at
 -- Disable RLS for designs
 ALTER TABLE designs DISABLE ROW LEVEL SECURITY;
 
--- 8. Function: generate time slots for a given date using business hours + segments
+-- 8. Create recurring_appointments table
+-- This table supports multiple barbers by associating each recurring appointment with a user_id
+CREATE TABLE IF NOT EXISTS recurring_appointments (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  client_name TEXT NOT NULL,
+  client_phone TEXT NOT NULL,
+  day_of_week INT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+  slot_time TIME NOT NULL,
+  service_name TEXT NOT NULL,
+  repeat_interval_weeks INT DEFAULT 1 CHECK (repeat_interval_weeks BETWEEN 1 AND 4),
+  start_date DATE,
+  end_date DATE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for recurring_appointments table
+CREATE INDEX IF NOT EXISTS idx_recurring_appointments_day_time ON recurring_appointments(day_of_week, slot_time);
+CREATE INDEX IF NOT EXISTS idx_recurring_appointments_client ON recurring_appointments(client_phone);
+CREATE INDEX IF NOT EXISTS idx_recurring_appointments_user_id ON recurring_appointments(user_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_appointments_dates ON recurring_appointments(start_date, end_date);
+
+-- Trigger for updated_at on recurring_appointments
+DROP TRIGGER IF EXISTS update_recurring_appointments_updated_at ON recurring_appointments;
+CREATE TRIGGER update_recurring_appointments_updated_at 
+    BEFORE UPDATE ON recurring_appointments 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Disable RLS for recurring_appointments
+ALTER TABLE recurring_appointments DISABLE ROW LEVEL SECURITY;
+
+-- 9. Function: generate time slots for a given date using business hours + segments
 CREATE OR REPLACE FUNCTION public.generate_time_slots_for_date(target_date DATE)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -309,6 +342,7 @@ BEGIN
       client_name = r.client_name,
       client_phone = r.client_phone,
       service_name = r.service_name,
+      user_id = r.user_id,
       updated_at = NOW()
   FROM recurring_appointments r
   WHERE s.slot_date = target_date
@@ -319,8 +353,8 @@ BEGIN
     AND (r.end_date IS NULL OR r.end_date >= target_date);
 
   -- 2) Insert booked slots for recurring clients that don't have a slot yet (e.g., outside generated windows is skipped)
-  INSERT INTO appointments (slot_date, slot_time, is_available, client_name, client_phone, service_name)
-  SELECT target_date, r.slot_time, FALSE, r.client_name, r.client_phone, r.service_name
+  INSERT INTO appointments (slot_date, slot_time, is_available, client_name, client_phone, service_name, user_id)
+  SELECT target_date, r.slot_time, FALSE, r.client_name, r.client_phone, r.service_name, r.user_id
   FROM recurring_appointments r
   WHERE r.day_of_week = dow
     AND (r.start_date IS NULL OR r.start_date <= target_date)

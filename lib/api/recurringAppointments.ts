@@ -10,7 +10,7 @@ export interface RecurringAppointment {
   repeat_interval_weeks?: number; // 1-4, default 1
   start_date?: string | null; // YYYY-MM-DD
   end_date?: string | null;   // YYYY-MM-DD
-  // New: user (barber) association - using existing users table
+  // User (barber) association - enables multiple barbers to have separate recurring appointments
   user_id?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -29,12 +29,13 @@ export const recurringAppointmentsApi = {
       first.setDate(start.getDate() + delta);
       const firstDateStr = toDateString(first);
 
-      // 1) Existing recurring rule with same day/time
+      // 1) Existing recurring rule with same day/time for the same barber
       const { data: existingRecurring, error: existingRecurringErr } = await supabase
         .from('recurring_appointments')
         .select('id')
         .eq('day_of_week', payload.day_of_week)
         .eq('slot_time', payload.slot_time)
+        .eq('user_id', payload.user_id)
         .limit(1)
         .maybeSingle();
       if (existingRecurringErr) {
@@ -45,12 +46,13 @@ export const recurringAppointmentsApi = {
         return null;
       }
 
-      // 2) Concrete slot already booked on the nearest occurrence date
+      // 2) Concrete slot already booked on the nearest occurrence date for the same barber
       const { data: bookedSlot, error: bookedErr } = await supabase
         .from('appointments')
         .select('id, is_available')
         .eq('slot_date', firstDateStr)
         .eq('slot_time', payload.slot_time)
+        .eq('user_id', payload.user_id)
         .eq('is_available', false)
         .maybeSingle();
       if (bookedErr) {
@@ -204,6 +206,7 @@ export const recurringAppointmentsApi = {
               client_name: rule.client_name,
               client_phone: rule.client_phone,
               service_name: rule.service_name,
+              user_id: rule.user_id,
             });
         } else if (slot.is_available === true) {
           // Book the existing available slot for this client
@@ -214,6 +217,7 @@ export const recurringAppointmentsApi = {
               client_name: rule.client_name,
               client_phone: rule.client_phone,
               service_name: rule.service_name,
+              user_id: rule.user_id,
             })
             .eq('id', slot.id)
             .eq('is_available', true);

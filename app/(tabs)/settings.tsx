@@ -779,23 +779,25 @@ export default function SettingsScreen() {
     return target.toISOString().split('T')[0];
   };
 
-  // Validate that the selected time is still available for the nearest occurrence of the chosen day
+  // Validate that the selected time is still available for the nearest occurrence of the chosen day for this barber
   const isTimeAvailable = async (dayOfWeek: number, timeHHmm: string): Promise<boolean> => {
     try {
-      // 1) Check conflicts with other recurring rules
+      // 1) Check conflicts with other recurring rules for this barber
       const { data: recurring } = await supabase
         .from('recurring_appointments')
         .select('slot_time')
-        .eq('day_of_week', dayOfWeek);
+        .eq('day_of_week', dayOfWeek)
+        .eq('user_id', user?.id);
       const recurringTimes = new Set((recurring || []).map((r: any) => String(r.slot_time).slice(0,5)));
       if (recurringTimes.has(timeHHmm)) return false;
 
-      // 2) Check conflicts with existing booked slots on nearest occurrence date
+      // 2) Check conflicts with existing booked slots on nearest occurrence date for this barber
       const targetDate = getNextDateForDay(dayOfWeek);
       const { data: booked } = await supabase
-        .from('available_time_slots')
+        .from('appointments')
         .select('slot_time, is_available')
         .eq('slot_date', targetDate)
+        .eq('user_id', user?.id)
         .eq('is_available', false);
       const bookedTimes = new Set((booked || []).map((s: any) => String(s.slot_time).slice(0,5)));
       if (bookedTimes.has(timeHHmm)) return false;
@@ -872,19 +874,21 @@ export default function SettingsScreen() {
         }
       }
 
-      // Exclude conflicts with other recurring rules (same day/time)
+      // Exclude conflicts with other recurring rules for this barber (same day/time)
       const { data: recurring } = await supabase
         .from('recurring_appointments')
         .select('slot_time')
-        .eq('day_of_week', dayOfWeek);
+        .eq('day_of_week', dayOfWeek)
+        .eq('user_id', user?.id);
       const recurringTimes = new Set((recurring || []).map((r: any) => String(r.slot_time).slice(0,5)));
 
-      // Exclude conflicts with existing booked slots on the nearest occurrence date
+      // Exclude conflicts with existing booked slots on the nearest occurrence date for this barber
       const targetDate = getNextDateForDay(dayOfWeek);
       const { data: booked } = await supabase
-        .from('available_time_slots')
+        .from('appointments')
         .select('slot_time, is_available')
         .eq('slot_date', targetDate)
+        .eq('user_id', user?.id)
         .eq('is_available', false);
       const bookedTimes = new Set((booked || []).map((s: any) => String(s.slot_time).slice(0,5)));
 
@@ -944,10 +948,11 @@ export default function SettingsScreen() {
       setClientResults([]);
       return;
     }
-    // Exclude clients that already have any recurring appointment
+    // Exclude clients that already have a recurring appointment with this barber
     const { data: recs } = await supabase
       .from('recurring_appointments')
-      .select('client_phone');
+      .select('client_phone')
+      .eq('user_id', user?.id);
     const recurringPhones = new Set((recs || []).map((r: any) => String(r.client_phone).trim()).filter(Boolean));
 
     const filtered = (data || [])
@@ -977,6 +982,7 @@ export default function SettingsScreen() {
         slot_time: selectedTime,
         service_name: selectedService.name,
         repeat_interval_weeks: repeatWeeks,
+        user_id: user?.id || null, // שליחת ה-user_id של הספר המחובר
       } as any);
       if (created) {
         Alert.alert('הצלחה', 'התור הקבוע נוצר בהצלחה. לאחר יצירת התורים השבועית, הסלוט יישמר ללקוח.');

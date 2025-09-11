@@ -157,40 +157,99 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
       const dateString = formatDateToLocalString(date);
       const dayOfWeek = date.getDay();
       
-      // Get business hours for this day
-      const { data: businessHours } = await supabase
-        .from('business_hours')
-        .select('*')
-        .eq('day_of_week', dayOfWeek)
-        .eq('is_active', true)
-        .maybeSingle();
+      // Get business hours for this day: prefer user-specific row, fallback to global (null user_id)
+      let businessHours: any | null = null;
+      try {
+        const { data: bhUser } = await supabase
+          .from('business_hours')
+          .select('*')
+          .eq('day_of_week', dayOfWeek)
+          .eq('is_active', true)
+          .eq('user_id', user?.id)
+          .maybeSingle();
+        if (bhUser) businessHours = bhUser;
+      } catch {}
+      if (!businessHours) {
+        const { data: bhGlobal } = await supabase
+          .from('business_hours')
+          .select('*')
+          .eq('day_of_week', dayOfWeek)
+          .eq('is_active', true)
+          .is('user_id', null)
+          .maybeSingle();
+        businessHours = bhGlobal || null;
+      }
 
       if (!businessHours) {
         setAvailableTimes([]);
         return;
       }
 
-      // Build time windows
-      const startTime = businessHours.start_time;
-      const endTime = businessHours.end_time;
-      const slotDuration = businessHours.slot_duration_minutes || 60;
+      // Build time windows and slot duration (normalize to HH:mm to avoid HH:mm:ss mismatches)
+      const normalize = (s: any) => String(s).slice(0, 5);
+      const startTime = normalize(businessHours.start_time);
+      const endTime = normalize(businessHours.end_time);
+      const slotDuration = (selectedService?.duration_minutes && selectedService.duration_minutes > 0
+        ? selectedService.duration_minutes
+        : (businessHours.slot_duration_minutes || 60));
       
-      // Generate time slots
+      // Subtract breaks from the main window
+      type Window = { start: string; end: string };
+      const baseWindows: Window[] = [{ start: startTime, end: endTime }];
+      const brks: Array<{ start_time: string; end_time: string }> = (businessHours as any).breaks || [];
+      const singleBreak = (businessHours.break_start_time && businessHours.break_end_time)
+        ? [{ start_time: businessHours.break_start_time, end_time: businessHours.break_end_time }]
+        : [];
+      const allBreaks = [...brks, ...singleBreak].map(b => ({
+        start_time: normalize(b.start_time),
+        end_time: normalize(b.end_time),
+      }));
+
+      const subtractBreaks = (wins: Window[], breaks: typeof allBreaks): Window[] => {
+        let result = wins.slice();
+        for (const b of breaks) {
+          const next: Window[] = [];
+          for (const w of result) {
+            if (b.end_time <= w.start || b.start_time >= w.end) {
+              next.push(w);
+              continue;
+            }
+            if (w.start < b.start_time) next.push({ start: w.start, end: b.start_time });
+            if (b.end_time < w.end) next.push({ start: b.end_time, end: w.end });
+          }
+          result = next;
+        }
+        return result.filter(w => w.start < w.end);
+      };
+
+      const windows = subtractBreaks(baseWindows, allBreaks);
+
+      // Helpers to add and compare HH:mm
+      const addMinutes = (hhmm: string, minutes: number): string => {
+        const [h, m] = hhmm.split(':').map((x: string) => parseInt(x, 10));
+        const total = h * 60 + m + minutes;
+        const hh = Math.floor(total / 60) % 24;
+        const mm = total % 60;
+        return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+      };
+      const compareTimes = (a: string, b: string) => a.localeCompare(b);
+
+      // Generate time slots aligned to service duration within open windows, ensuring the full service fits
       const slots: string[] = [];
-      let currentTime = new Date(`2000-01-01T${startTime}`);
-      const endDateTime = new Date(`2000-01-01T${endTime}`);
-      
-      while (currentTime < endDateTime) {
-        const timeString = currentTime.toTimeString().slice(0, 5);
-        slots.push(timeString);
-        currentTime.setMinutes(currentTime.getMinutes() + slotDuration);
+      for (const w of windows) {
+        let t = w.start as string;
+        while (compareTimes(addMinutes(t, slotDuration), w.end) <= 0) {
+          slots.push(t.slice(0, 5));
+          t = addMinutes(t, slotDuration);
+        }
       }
 
       // Check for existing appointments and remove booked slots
       const { data: existingAppointments } = await supabase
         .from('appointments')
         .select('slot_time, is_available')
-        .eq('slot_date', dateString);
+        .eq('slot_date', dateString)
+        .eq('user_id', user?.id);
 
       const bookedTimes = new Set(
         (existingAppointments || [])
@@ -270,7 +329,8 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
       .from('appointments')
       .select('id')
       .eq('slot_date', dateString)
-      .eq('slot_time', `${selectedTime}:00`);
+      .eq('slot_time', `${selectedTime}:00`)
+      .eq('user_id', user.id);
 
     if (conflictingAppointments && conflictingAppointments.length > 0) {
       Alert.alert('תור נתפס', 'השעה שבחרת כבר נתפסה. אנא בחר שעה אחרת.');
@@ -318,7 +378,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <CalendarDays size={20} color={Colors.primary} />
+          <CalendarDays size={20} color={'#000000'} />
           <Text style={styles.sectionTitle}>תאריך התור</Text>
         </View>
         <View style={styles.calendarContainer}>
@@ -329,7 +389,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
               const date = new Date(day.dateString);
               handleDateSelect(date);
             }}
-            markedDates={selected ? { [selected]: { selected: true, selectedColor: '#7B61FF' } } : undefined}
+            markedDates={selected ? { [selected]: { selected: true, selectedColor: '#000000' } } : undefined}
             enableSwipeMonths
             hideDayNames={false}
             firstDay={0}
@@ -337,9 +397,9 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
             theme={{
               textDayFontSize: 16,
               textMonthFontSize: 16,
-              arrowColor: '#7B61FF',
-              selectedDayBackgroundColor: '#7B61FF',
-              todayTextColor: '#7B61FF',
+              arrowColor: '#000000',
+              selectedDayBackgroundColor: '#000000',
+              todayTextColor: '#000000',
               // Force RTL order for header and weeks
               'stylesheet.calendar.header': {
                 week: { flexDirection: 'row-reverse' },
@@ -357,7 +417,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
   const renderClientSelector = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <User size={20} color={Colors.primary} />
+        <User size={20} color={'#000000'} />
         <Text style={styles.sectionTitle}>לקוח</Text>
       </View>
       
@@ -441,7 +501,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
   const renderServiceSelector = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Calendar size={20} color={Colors.primary} />
+        <Calendar size={20} color={'#000000'} />
         <Text style={styles.sectionTitle}>שירות</Text>
       </View>
       
@@ -486,7 +546,7 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
   const renderTimeSelector = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Clock size={20} color={Colors.primary} />
+        <Clock size={20} color={'#000000'} />
         <Text style={styles.sectionTitle}>שעה</Text>
       </View>
       
@@ -565,11 +625,11 @@ export default function AddAppointmentModal({ visible, onClose, onSuccess }: Add
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>ביטול</Text>
+            <Text style={[styles.closeButtonText, { color: '#000000' }]}>ביטול</Text>
           </TouchableOpacity>
           <Text style={styles.title}>הוספת תור ללקוח</Text>
           <TouchableOpacity 
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: '#000000' }, isSubmitting && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={isSubmitting}
           >

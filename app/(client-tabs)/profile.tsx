@@ -113,6 +113,8 @@ export default function ClientProfileScreen() {
         allowsMultipleSelection: false,
         quality: 0.9,
         base64: true,
+        allowsEditing: true,
+        aspect: [1, 1],
       });
       if (result.canceled || !result.assets?.length) return;
       const a = result.assets[0] as any;

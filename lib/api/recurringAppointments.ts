@@ -30,14 +30,23 @@ export const recurringAppointmentsApi = {
       const firstDateStr = toDateString(first);
 
       // 1) Existing recurring rule with same day/time for the same barber
-      const { data: existingRecurring, error: existingRecurringErr } = await supabase
+      let existingQuery = supabase
         .from('recurring_appointments')
         .select('id')
         .eq('day_of_week', payload.day_of_week)
         .eq('slot_time', payload.slot_time)
-        .eq('user_id', payload.user_id)
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      
+      // Only filter by user_id if provided and column exists
+      try {
+        if (payload.user_id) {
+          existingQuery = existingQuery.eq('user_id', payload.user_id);
+        }
+      } catch (e) {
+        console.log('user_id column not available in recurring_appointments, skipping user filter');
+      }
+      
+      const { data: existingRecurring, error: existingRecurringErr } = await existingQuery.maybeSingle();
       if (existingRecurringErr) {
         console.error('Error checking existing recurring rules:', existingRecurringErr);
       }
@@ -47,14 +56,19 @@ export const recurringAppointmentsApi = {
       }
 
       // 2) Concrete slot already booked on the nearest occurrence date for the same barber
-      const { data: bookedSlot, error: bookedErr } = await supabase
+      let bookedQuery = supabase
         .from('appointments')
         .select('id, is_available')
         .eq('slot_date', firstDateStr)
         .eq('slot_time', payload.slot_time)
-        .eq('user_id', payload.user_id)
-        .eq('is_available', false)
-        .maybeSingle();
+        .eq('is_available', false);
+      
+      // Only filter by user_id if provided
+      if (payload.user_id) {
+        bookedQuery = bookedQuery.eq('user_id', payload.user_id);
+      }
+      
+      const { data: bookedSlot, error: bookedErr } = await bookedQuery.maybeSingle();
       if (bookedErr) {
         console.error('Error checking booked slots for nearest occurrence:', bookedErr);
       }
@@ -108,8 +122,13 @@ export const recurringAppointmentsApi = {
       .from('recurring_appointments')
       .select('*');
 
+    // Only filter by user_id if provided and column exists
     if (userId) {
-      query = query.eq('user_id', userId);
+      try {
+        query = query.eq('user_id', userId);
+      } catch (e) {
+        console.log('user_id column not available in recurring_appointments, returning all records');
+      }
     }
 
     const { data, error } = await query

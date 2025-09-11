@@ -137,7 +137,6 @@ export default function ClientAppointmentsScreen() {
   const [managerPhone, setManagerPhone] = useState<string | null>(null);
   const [businessAddress, setBusinessAddress] = useState<string>('');
   const [barberImages, setBarberImages] = useState<Record<string, string>>({});
-  const [barberNames, setBarberNames] = useState<Record<string, string>>({});
   const { user } = useAuthStore();
 
   // Load manager phone (first admin user)
@@ -350,14 +349,13 @@ export default function ClientAppointmentsScreen() {
     }
   }, [userAppointments, user?.id, user?.name, user?.phone, user?.user_type]);
 
-  // Load barber images and names for appointments
+  // Load barber images for appointments
   useEffect(() => {
-    const loadBarberData = async () => {
+    const loadBarberImages = async () => {
       const userIds = Array.from(new Set(verifiedUserAppointments.map(apt => apt.user_id).filter(Boolean)));
       if (userIds.length === 0) return;
 
       const images: Record<string, string> = {};
-      const names: Record<string, string> = {};
       await Promise.all(
         userIds.map(async (userId) => {
           try {
@@ -365,19 +363,15 @@ export default function ClientAppointmentsScreen() {
             if (userData?.image_url) {
               images[userId] = userData.image_url;
             }
-            if (userData?.name) {
-              names[userId] = userData.name;
-            }
           } catch (error) {
-            console.error('Error loading barber data:', error);
+            console.error('Error loading barber image:', error);
           }
         })
       );
       setBarberImages(images);
-      setBarberNames(names);
     };
 
-    loadBarberData();
+    loadBarberImages();
   }, [verifiedUserAppointments]);
   
   const upcomingAppointments = React.useMemo(() => {
@@ -443,52 +437,6 @@ export default function ClientAppointmentsScreen() {
     );
   }, [barberImages]);
 
-  // Barber Info Component (Avatar + Name)
-  const BarberInfo: React.FC<{ userId?: string; size?: number }> = React.useCallback(({ userId, size = 36 }) => {
-    if (!userId) return null;
-    
-    const imageUrl = barberImages[userId];
-    const barberName = barberNames[userId] || 'ספר';
-    
-    return (
-      <View style={styles.barberInfoContainer}>
-        <View style={[styles.barberInfoBackground, { 
-          paddingLeft: size * 0.8, 
-          paddingRight: 4,
-          paddingVertical: 4,
-          borderRadius: size / 2,
-          height: size + 8
-        }]}>
-          <Text style={[styles.barberNameText, { fontSize: size * 0.3 }]}>{barberName}</Text>
-          <View style={[styles.barberAvatarContainer, { 
-            width: size, 
-            height: size,
-            position: 'absolute',
-            right: 4,
-            top: 4
-          }]}>
-            <LinearGradient
-              colors={["#000000", "#333333"]}
-              style={[styles.barberAvatarGradient, { width: size, height: size, borderRadius: size / 2 }]}
-            >
-              <View style={[styles.barberAvatar, { width: size - 4, height: size - 4, borderRadius: (size - 4) / 2 }]}>
-                {imageUrl ? (
-                  <Image 
-                    source={{ uri: imageUrl }} 
-                    style={[styles.barberAvatarImage, { width: size - 4, height: size - 4, borderRadius: (size - 4) / 2 }]} 
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Ionicons name="person" size={size * 0.5} color="#666" />
-                )}
-              </View>
-            </LinearGradient>
-          </View>
-        </View>
-      </View>
-    );
-  }, [barberImages, barberNames]);
-
   // Hero card component for the next appointment so it can be embedded in scrollable content
   const NextAppointmentHero: React.FC = React.useCallback(() => {
     if (!(activeTab === 'upcoming' && nextAppointment)) return null;
@@ -503,9 +451,9 @@ export default function ClientAppointmentsScreen() {
           <View style={styles.heroCardOverlay} />
           
           <View style={styles.heroContent}>
-            {/* Barber Info in top right corner */}
+            {/* Barber Avatar in top right corner */}
             <View style={styles.heroBarberAvatarContainer}>
-              <BarberInfo userId={nextAppointment!.user_id} size={48} />
+              <BarberAvatar userId={nextAppointment!.user_id} size={48} />
             </View>
             
             {/* Cancel button in top left corner */}
@@ -615,16 +563,13 @@ export default function ClientAppointmentsScreen() {
             <View style={styles.heroCardOverlay} />
             
             <View style={styles.heroContent}>
-              {/* Barber Info in top right corner */}
-              <View style={styles.heroBarberAvatarContainer}>
-                <BarberInfo userId={item.user_id} size={44} />
-              </View>
-              
-              {/* Past badge in top left corner */}
-              <View style={styles.pastBadgeContainer}>
+              <View style={styles.regularHeader}>
                 <View style={styles.pastBadge}>
                   <Ionicons name="checkmark-circle" size={16} color="#34C759" />
                   <Text style={styles.pastBadgeText}>הושלם</Text>
+                </View>
+                <View style={styles.regularHeaderRight}>
+                  <BarberAvatar userId={item.user_id} size={44} />
                 </View>
               </View>
 
@@ -681,9 +626,9 @@ export default function ClientAppointmentsScreen() {
           <View style={styles.heroCardOverlay} />
           
           <View style={styles.heroContent}>
-            {/* Barber Info in top right corner */}
+            {/* Barber Avatar in top right corner */}
             <View style={styles.heroBarberAvatarContainer}>
-              <BarberInfo userId={item.user_id} size={44} />
+              <BarberAvatar userId={item.user_id} size={48} />
             </View>
             
             {/* Cancel button in top left corner */}
@@ -1763,35 +1708,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     position: 'relative',
-  },
-  pastBadgeContainer: {
-    position: 'absolute',
-    top: -6,
-    left: -6,
-    zIndex: 2,
-  },
-  // Barber Info Styles (Avatar + Name)
-  barberInfoContainer: {
-    position: 'relative',
-  },
-  barberInfoBackground: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    backgroundColor: 'rgba(142, 142, 147, 0.1)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    position: 'relative',
-  },
-  barberNameText: {
-    fontWeight: '600',
-    color: '#1C1C1E',
-    letterSpacing: -0.2,
-    textAlign: 'right',
-    flex: 1,
-    marginRight: 8,
   },
 });

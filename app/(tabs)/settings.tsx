@@ -768,7 +768,7 @@ export default function SettingsScreen() {
   const dayNames = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   const timeOptions = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2,'0')}:00`);
 
-  // Compute next date string (YYYY-MM-DD) for a given dayOfWeek (0..6) from today
+  // Compute next date string (YYYY-MM-DD, local) for a given dayOfWeek (0..6) from today
   const getNextDateForDay = (dayOfWeek: number): string => {
     const today = new Date();
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -776,30 +776,50 @@ export default function SettingsScreen() {
     const delta = (dayOfWeek - currentDow + 7) % 7; // 0..6
     const target = new Date(start);
     target.setDate(start.getDate() + delta);
-    return target.toISOString().split('T')[0];
+    const y = target.getFullYear();
+    const m = String(target.getMonth() + 1).padStart(2, '0');
+    const d = String(target.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
   // Validate that the selected time is still available for the nearest occurrence of the chosen day for this barber
   const isTimeAvailable = async (dayOfWeek: number, timeHHmm: string): Promise<boolean> => {
     try {
       // 1) Check conflicts with other recurring rules for this barber
-      const { data: recurring } = await supabase
+      let recurringQuery = supabase
         .from('recurring_appointments')
         .select('slot_time')
-        .eq('day_of_week', dayOfWeek)
-        .eq('user_id', user?.id);
+        .eq('day_of_week', dayOfWeek);
+      // Only filter by user_id if the column exists (avoid schema errors)
+      try {
+        if (user?.id) {
+          recurringQuery = recurringQuery.eq('user_id', user.id);
+        }
+      } catch {
+        // If user_id column doesn't exist, just get all recurring appointments for this day
+      }
+      const { data: recurring } = await recurringQuery;
       const recurringTimes = new Set((recurring || []).map((r: any) => String(r.slot_time).slice(0,5)));
       if (recurringTimes.has(timeHHmm)) return false;
 
-      // 2) Check conflicts with existing booked slots on nearest occurrence date for this barber
-      const targetDate = getNextDateForDay(dayOfWeek);
-      const { data: booked } = await supabase
+      // 2) Check conflicts with existing booked slots on ANY date that falls on this day of week
+      let bookedQuery = supabase
         .from('appointments')
-        .select('slot_time, is_available')
-        .eq('slot_date', targetDate)
-        .eq('user_id', user?.id)
+        .select('slot_time, slot_date, is_available')
         .eq('is_available', false);
-      const bookedTimes = new Set((booked || []).map((s: any) => String(s.slot_time).slice(0,5)));
+      if (user?.id) {
+        bookedQuery = bookedQuery.or(`user_id.eq.${user.id},user_id.is.null`);
+      } else {
+        bookedQuery = bookedQuery.is('user_id', null);
+      }
+      const { data: allBooked } = await bookedQuery;
+      
+      // Filter to only appointments that fall on the selected day of week
+      const bookedOnThisDay = (allBooked || []).filter((apt: any) => {
+        const aptDate = new Date(apt.slot_date + 'T00:00:00'); // Local date
+        return aptDate.getDay() === dayOfWeek;
+      });
+      const bookedTimes = new Set(bookedOnThisDay.map((s: any) => String(s.slot_time).slice(0,5)));
       if (bookedTimes.has(timeHHmm)) return false;
 
       return true;
@@ -813,27 +833,50 @@ export default function SettingsScreen() {
     setIsLoadingTimes(true);
     setAvailableTimes([]);
     try {
-      // Fetch business hours for day
-      const { data: bhRow } = await supabase
-        .from('business_hours')
-        .select('*')
-        .eq('day_of_week', dayOfWeek)
-        .eq('is_active', true)
-        .maybeSingle();
+      // Fetch business hours for day: prefer user-specific row, fallback to global (user_id IS NULL)
+      let bhRow: any | null = null;
+      try {
+        const { data: bhUser } = await supabase
+          .from('business_hours')
+          .select('*')
+          .eq('day_of_week', dayOfWeek)
+          .eq('is_active', true)
+          .eq('user_id', user?.id)
+          .maybeSingle();
+        if (bhUser) bhRow = bhUser;
+      } catch {}
+      if (!bhRow) {
+        const { data: bhGlobal } = await supabase
+          .from('business_hours')
+          .select('*')
+          .eq('day_of_week', dayOfWeek)
+          .eq('is_active', true)
+          .is('user_id', null)
+          .maybeSingle();
+        bhRow = bhGlobal || null;
+      }
 
       if (!bhRow) {
         setAvailableTimes([]);
         return;
       }
 
+      // Normalize to HH:mm to avoid HH:mm:ss mismatches
+      const normalize = (s: any) => String(s).slice(0, 5);
+
       // Build windows minus breaks
       type Window = { start: string; end: string };
-      const baseWindows: Window[] = [{ start: bhRow.start_time, end: bhRow.end_time }];
+      const startTime = normalize((bhRow as any).start_time);
+      const endTime = normalize((bhRow as any).end_time);
+      const baseWindows: Window[] = [{ start: startTime, end: endTime }];
       const brks: Array<{ start_time: string; end_time: string }> = (bhRow as any).breaks || [];
       const singleBreak = (bhRow.break_start_time && bhRow.break_end_time)
-        ? [{ start_time: bhRow.break_start_time, end_time: bhRow.break_end_time }]
+        ? [{ start_time: (bhRow as any).break_start_time, end_time: (bhRow as any).break_end_time }]
         : [];
-      const allBreaks = [...brks, ...singleBreak];
+      const allBreaks = [...brks, ...singleBreak].map(b => ({
+        start_time: normalize(b.start_time),
+        end_time: normalize(b.end_time),
+      }));
 
       const subtractBreaks = (wins: Window[], breaks: typeof allBreaks): Window[] => {
         let result = wins.slice();
@@ -854,8 +897,10 @@ export default function SettingsScreen() {
 
       const windows = subtractBreaks(baseWindows, allBreaks);
 
-      // Enumerate options by slot duration
-      const dur: number = bhRow.slot_duration_minutes && bhRow.slot_duration_minutes > 0 ? bhRow.slot_duration_minutes : 60;
+      // Enumerate options by slot duration (prefer selected service's duration)
+      const dur: number = (selectedService?.duration_minutes && selectedService.duration_minutes > 0)
+        ? (selectedService.duration_minutes as number)
+        : (bhRow.slot_duration_minutes && bhRow.slot_duration_minutes > 0 ? bhRow.slot_duration_minutes : 60);
       const addMinutes = (hhmm: string, minutes: number): string => {
         const [h, m] = hhmm.split(':').map((x: string) => parseInt(x, 10));
         const total = h * 60 + m + minutes;
@@ -868,29 +913,46 @@ export default function SettingsScreen() {
       const baseTimes: string[] = [];
       for (const w of windows) {
         let t = w.start as string;
-        while (compareTimes(t, w.end) < 0) {
+        while (compareTimes(addMinutes(t, dur), w.end) <= 0) {
           baseTimes.push(t.slice(0,5));
           t = addMinutes(t, dur);
         }
       }
 
       // Exclude conflicts with other recurring rules for this barber (same day/time)
-      const { data: recurring } = await supabase
+      let recurringQuery = supabase
         .from('recurring_appointments')
         .select('slot_time')
-        .eq('day_of_week', dayOfWeek)
-        .eq('user_id', user?.id);
+        .eq('day_of_week', dayOfWeek);
+      // Only filter by user_id if the column exists (avoid schema errors)
+      try {
+        if (user?.id) {
+          recurringQuery = recurringQuery.eq('user_id', user.id);
+        }
+      } catch {
+        // If user_id column doesn't exist, just get all recurring appointments for this day
+      }
+      const { data: recurring } = await recurringQuery;
       const recurringTimes = new Set((recurring || []).map((r: any) => String(r.slot_time).slice(0,5)));
 
-      // Exclude conflicts with existing booked slots on the nearest occurrence date for this barber
-      const targetDate = getNextDateForDay(dayOfWeek);
-      const { data: booked } = await supabase
+      // Exclude conflicts with existing booked slots on ANY date that falls on this day of week
+      let bookedQuery = supabase
         .from('appointments')
-        .select('slot_time, is_available')
-        .eq('slot_date', targetDate)
-        .eq('user_id', user?.id)
+        .select('slot_time, slot_date, is_available')
         .eq('is_available', false);
-      const bookedTimes = new Set((booked || []).map((s: any) => String(s.slot_time).slice(0,5)));
+      if (user?.id) {
+        bookedQuery = bookedQuery.or(`user_id.eq.${user.id},user_id.is.null`);
+      } else {
+        bookedQuery = bookedQuery.is('user_id', null);
+      }
+      const { data: allBooked } = await bookedQuery;
+      
+      // Filter to only appointments that fall on the selected day of week
+      const bookedOnThisDay = (allBooked || []).filter((apt: any) => {
+        const aptDate = new Date(apt.slot_date + 'T00:00:00'); // Local date
+        return aptDate.getDay() === dayOfWeek;
+      });
+      const bookedTimes = new Set(bookedOnThisDay.map((s: any) => String(s.slot_time).slice(0,5)));
 
       const filtered = baseTimes.filter(t => !recurringTimes.has(t) && !bookedTimes.has(t));
       setAvailableTimes(filtered);
@@ -975,15 +1037,19 @@ export default function SettingsScreen() {
     }
     setIsSubmittingRecurring(true);
     try {
-      const created = await recurringAppointmentsApi.create({
+      const recurringData: any = {
         client_name: selectedClient.name || 'לקוח',
         client_phone: selectedClient.phone,
         day_of_week: selectedDayOfWeek,
         slot_time: selectedTime,
         service_name: selectedService.name,
         repeat_interval_weeks: repeatWeeks,
-        user_id: user?.id || null, // שליחת ה-user_id של הספר המחובר
-      } as any);
+      };
+      // Only add user_id if the API supports it
+      if (user?.id) {
+        recurringData.user_id = user.id;
+      }
+      const created = await recurringAppointmentsApi.create(recurringData);
       if (created) {
         Alert.alert('הצלחה', 'התור הקבוע נוצר בהצלחה. לאחר יצירת התורים השבועית, הסלוט יישמר ללקוח.');
         setShowRecurringModal(false);
